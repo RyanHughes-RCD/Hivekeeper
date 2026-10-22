@@ -4,7 +4,7 @@ import { SPRITES } from './bee-sprites.js';
 import { drawBee } from './art.js';
 
 const WING_SPAN = 2.2;   // wing pair width, in body (abdomen) widths
-const LEG_SPREAD = 1.35; // legs drawn larger than painted so they peek out past the body
+const LEG_SPREAD = 1.1;  // legs a touch larger than painted so they peek out past the body
 const imgs = { bodies: {}, legs: [], wings: [] };
 let ready = false;
 
