@@ -12,6 +12,8 @@ A cosy, mobile-first beekeeping game. Grow a pastel isometric cottage garden, pe
 | 🛍️ **Shop** | Buy seeds and decorations with honey. Buy eggs with pollen (and honey for the rarer ones). Shop items unlock as your keeper level goes up. |
 | 🐝 **Bees** | Your collection of 12 species, from Common to Legendary. Each species has traits: faster nectar, extra pollen, more frequent gifts, or a bonus to honey made while you're away. You can rename your bees. |
 
+**The garden map** is the painting in `assets/garden-map.jpg`: meadows, a river looping round an island, and a waterfall. You can build on any grass tile, including the island, but not on the river or cliffs. Drag sideways to explore it. If you replace the picture (a higher-resolution export of the same map works best), run `python3 tools/make-map.py`. It finds the painted tile grid and rebuilds `js/map.js`, the list of buildable tiles.
+
 **Progress saves automatically** to the device (in `localStorage`), every few seconds and whenever the app goes to the background. **While the game is closed** (up to 8 hours), honey cells keep filling, flowers keep growing, eggs keep hatching and gifts keep appearing. You get a "Welcome back" summary when you return.
 
 ## Project files
@@ -24,6 +26,8 @@ css/style.css          mobile-first pastel UI, safe-area aware
 js/main.js             boot, game loop, touch input (tap/pan/pinch), autosave
 js/state.js            game rules, save/load, offline progression
 js/data.js             bee species, flowers, decorations, eggs, tuning
+js/map.js              tile grid + buildable land for the map (generated)
+assets/garden-map.jpg  the garden map painting
 js/art.js              procedural canvas art (bees, flowers, hive, cottage…)
 js/garden.js           isometric garden scene
 js/hive.js             hexagonal hive interior scene
@@ -31,7 +35,7 @@ js/ui.js               shop, bee collection, dialogs, decorate tray
 js/icons.js, fx.js, audio.js   UI icons, particles, synthesized sounds
 icons/                 app icons (rendered from the game art)
 tests/play.test.mjs    end-to-end touch tests on an emulated iPhone
-tools/                 local server + icon generator
+tools/                 local server, icon and map generators
 ```
 
 ## Publish on GitHub Pages

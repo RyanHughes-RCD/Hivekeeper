@@ -1,26 +1,29 @@
 // Little Bee Haven — the pastel isometric cottage garden scene.
-import { GRID, HIVE_TILE, FLOWERS, DECOR } from './data.js';
+import { HIVE_TILE, FLOWERS, DECOR } from './data.js';
 import {
-  state, bus, tileKey, flowerStatus, bloomedFlowers, collectPollen, openGift, isHiveTile, inGrid, tileFree,
-  CELL_CAPACITY,
+  state, bus, tileKey, flowerStatus, bloomedFlowers, collectPollen, openGift, isHiveTile, isLand, tileFree,
+  CELL_CAPACITY, LAND_TILES, nearHive, COTTAGE_TILE,
 } from './state.js';
 import {
-  A, B, hash, ellipse, drawGrassTile, drawPlatform, drawBee, drawFlowerTile, drawDecor, drawGardenHive,
-  drawCottage, drawGift, drawRoundTree, drawBlossomCanopy, tilePath, sparkle, drawHeart, shadow,
+  A, B, hash, ellipse, drawBee, drawFlowerTile, drawDecor, drawGardenHive,
+  drawCottage, drawGift, tilePath, drawHeart, shadow,
 } from './art.js';
 import { Fx } from './fx.js';
+import { MAP } from './map.js';
 
 const iso = (x, y) => ({ x: (x - y) * A, y: (x + y) * B });
 const MAX_FLYERS = 10;
 
-const SCENERY = [
-  { kind: 'tree', x: -1.5, y: 3.3, s: 1.05 },
-  { kind: 'tree', x: -1.3, y: 5.6, s: 0.85, c: ['#b5e3a8', '#a6dc9a', '#c0e8b4'] },
-  { kind: 'blossom', x: 3.6, y: -1.5, s: 1 },
-  { kind: 'tree', x: 5.8, y: -1.25, s: 0.9 },
-  { kind: 'bushrow', x: 1.6, y: -1.2 },
-  { kind: 'bushrow', x: -1.15, y: 1.4 },
-];
+// The garden map picture, placed in world space so its painted diamonds line up
+// with the game's tiles (tile 0,0 sits at the world origin).
+const MAP_W = (2 * A) / MAP.tileW;
+const MAP_H = (2 * B) / MAP.tileH;
+const MAP_X = -MAP.originX * MAP_W;
+const MAP_Y = -MAP.originY * MAP_H;
+const EDGE = 22; // soil cliff under the front of the map
+const mapImg = new Image();
+mapImg.decoding = 'async';
+mapImg.src = MAP.src;
 
 export class GardenScene {
   constructor(hooks) {
@@ -45,29 +48,29 @@ export class GardenScene {
   resize(w, h, insets) {
     this.w = w; this.h = h; this.insets = insets;
     const availH = h - insets.top - insets.bottom;
-    const worldW = GRID * 2 * A;
-    const worldH = GRID * 2 * B + 210;
-    this.baseZoom = Math.min((w * 1.18) / worldW, (availH * 0.98) / worldH, 2.6);
+    // show most of the map's height; on a phone that's ~1 screen tall and wider than the screen
+    this.baseZoom = Math.min(2.4, Math.max(0.5, (availH * 0.8) / MAP_H));
     this.zoom = this.baseZoom;
     this.center();
   }
 
+  // start looking at the hive and the cottage
   center() {
-    const midWorldY = ((GRID - 1) * B * 2 - 150) / 2 + 10;
-    this.offX = this.w / 2;
-    this.offY = this.insets.top + (this.h - this.insets.top - this.insets.bottom) / 2 - midWorldY * this.zoom;
+    const focus = iso(HIVE_TILE.x - 0.5, HIVE_TILE.y - 0.5);
+    this.offX = this.w / 2 - focus.x * this.zoom;
+    this.offY = this.insets.top + (this.h - this.insets.top - this.insets.bottom) / 2 - (MAP_Y + MAP_H / 2) * this.zoom;
     this.clamp();
   }
 
+  // keep the map on screen: pan freely across it, centre it when it is smaller than the view
   clamp() {
-    const halfW = GRID * A * this.zoom;
-    const slackX = Math.max(0, halfW - this.w / 2 + 24);
-    this.offX = Math.min(this.w / 2 + slackX, Math.max(this.w / 2 - slackX, this.offX));
-    const midWorldY = ((GRID - 1) * B * 2 - 150) / 2 + 10;
-    const target = this.insets.top + (this.h - this.insets.top - this.insets.bottom) / 2 - midWorldY * this.zoom;
-    const halfH = (GRID * 2 * B + 210) * this.zoom / 2;
-    const slackY = Math.max(40, halfH - (this.h - this.insets.top - this.insets.bottom) / 2 + 40);
-    this.offY = Math.min(target + slackY, Math.max(target - slackY, this.offY));
+    const axis = (off, lo, hi, v0, v1) => {
+      const size = (hi - lo) * this.zoom;
+      if (size <= v1 - v0) return v0 + (v1 - v0 - size) / 2 - lo * this.zoom;
+      return Math.min(v0 - lo * this.zoom, Math.max(v1 - hi * this.zoom, off));
+    };
+    this.offX = axis(this.offX, MAP_X, MAP_X + MAP_W, 0, this.w);
+    this.offY = axis(this.offY, MAP_Y - 30, MAP_Y + MAP_H + EDGE, this.insets.top, this.h - this.insets.bottom);
   }
 
   pan(dx, dy) { this.offX += dx; this.offY += dy; this.clamp(); }
@@ -121,7 +124,9 @@ export class GardenScene {
             const p = iso(b.x, b.y);
             target = { x: p.x + (Math.random() - 0.5) * 18, y: p.y - FLOWERS[b.tile.type].height - 4 + (Math.random() - 0.5) * 6 };
           } else {
-            const p = iso(Math.random() * (GRID - 1), Math.random() * (GRID - 1));
+            const near = LAND_TILES.filter((t) => nearHive(t.x, t.y, 4));
+            const t = near[Math.floor(Math.random() * near.length)] || HIVE_TILE;
+            const p = iso(t.x, t.y);
             target = { x: p.x, y: p.y - 18 };
           }
           this.launch(f, door, target, 'out');
@@ -192,15 +197,49 @@ export class GardenScene {
       [[-22, 4, 18], [0, -6, 24], [24, 3, 18], [8, 8, 18], [-8, 9, 16]].forEach(([dx, dy, r]) => ellipse(ctx, cx + dx * s, cy + dy * s, r * s, r * 0.75 * s, '#ffffff'));
       ctx.globalAlpha = 1;
     }
-    // rolling hills in the distance (drift a little with the camera for depth)
-    const hy = this.offY - 40 * this.zoom;
-    const px = (this.offX - w / 2) * 0.3;
+    // rolling hills peeking over the back of the map (drift a little with the camera for depth)
+    const top = this.offY + MAP_Y * this.zoom;
+    const px = (this.offX - w / 2) * 0.15;
     ctx.fillStyle = '#d6efc4';
-    ctx.beginPath(); ctx.ellipse(w * 0.15 + px, hy + 40, w * 0.55, 90, 0, Math.PI, 0); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(w * 0.15 + px, top + 10, w * 0.6, 70, 0, Math.PI, 0); ctx.fill();
     ctx.fillStyle = '#cbeab6';
-    ctx.beginPath(); ctx.ellipse(w * 0.85 + px, hy + 50, w * 0.6, 100, 0, Math.PI, 0); ctx.fill();
-    ctx.fillStyle = '#e3f5d4';
-    ctx.fillRect(0, hy + 49, w, h);
+    ctx.beginPath(); ctx.ellipse(w * 0.85 + px, top + 14, w * 0.65, 80, 0, Math.PI, 0); ctx.fill();
+    // soft meadow below the map's soil edge
+    const bottom = this.offY + (MAP_Y + MAP_H + EDGE) * this.zoom;
+    ctx.fillStyle = '#e6f4d6';
+    ctx.fillRect(0, bottom, w, h - bottom);
+  }
+
+  drawMap(ctx, t) {
+    const x0 = MAP_X, y0 = MAP_Y, x1 = MAP_X + MAP_W, y1 = MAP_Y + MAP_H;
+    // soil edge along the front, like the map is a little diorama
+    ctx.fillStyle = '#d9b48f';
+    ctx.fillRect(x0, y1 - 2, MAP_W, EDGE + 2);
+    ctx.fillStyle = '#c9a07a';
+    ctx.fillRect(x0, y1 + EDGE * 0.55, MAP_W, EDGE * 0.45);
+    for (let k = 0; k < 60; k++) ellipse(ctx, x0 + hash(k) * MAP_W, y1 + 5 + hash(k + 50) * (EDGE - 8), 1.6, 1.1, 'rgba(255,255,255,0.35)');
+    if (mapImg.complete && mapImg.naturalWidth) {
+      ctx.drawImage(mapImg, x0, y0, MAP_W, MAP_H);
+    } else {
+      ctx.fillStyle = '#b6e39d';
+      ctx.fillRect(x0, y0, MAP_W, MAP_H);
+    }
+    ctx.strokeStyle = '#a7d98d';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x0, y1); ctx.lineTo(x1, y1); ctx.stroke();
+
+    if (!this.editMode) return;
+    // show where things can go while decorating (only tiles on screen)
+    const a = this.toWorld(0, 0), b = this.toWorld(this.w, this.h);
+    for (const { x, y } of LAND_TILES) {
+      const p = iso(x, y);
+      if (p.x < a.x - A || p.x > b.x + A || p.y < a.y - B || p.y > b.y + B) continue;
+      const sel = this.selected && this.selected.x === x && this.selected.y === y;
+      if (!sel && !((this.edit || this.moving) && tileFree(x, y))) continue;
+      tilePath(ctx, p.x, p.y, 0.94);
+      ctx.fillStyle = sel ? 'rgba(255,214,102,0.6)' : `rgba(255,255,255,${0.26 + 0.12 * Math.sin(t * 4 + x + y)})`;
+      ctx.fill();
+    }
   }
 
   draw(ctx, dpr) {
@@ -210,26 +249,11 @@ export class GardenScene {
     ctx.translate(this.offX, this.offY);
     ctx.scale(this.zoom, this.zoom);
 
-    const c = iso((GRID - 1) / 2, (GRID - 1) / 2);
-    drawPlatform(ctx, c.x, c.y, GRID / 2);
-
-    // ground tiles
-    for (let x = 0; x < GRID; x++) {
-      for (let y = 0; y < GRID; y++) {
-        const p = iso(x, y);
-        let hl = null;
-        if (this.editMode) {
-          if (this.selected && this.selected.x === x && this.selected.y === y) hl = 'rgba(255,214,102,0.55)';
-          else if ((this.edit || this.moving) && tileFree(x, y)) hl = `rgba(255,255,255,${0.28 + 0.12 * Math.sin(t * 4 + x + y)})`;
-        }
-        drawGrassTile(ctx, p.x, p.y, x, y, hl);
-      }
-    }
+    this.drawMap(ctx, t);
 
     // depth-sorted objects
     const objs = [];
-    for (const s of SCENERY) objs.push({ d: s.x + s.y, draw: () => this.drawScenery(ctx, s, t) });
-    objs.push({ d: -3.2, draw: () => { const p = iso(-1.75, -1.75); drawCottage(ctx, p.x, p.y, t); } });
+    objs.push({ d: COTTAGE_TILE.x + COTTAGE_TILE.y + 0.3, draw: () => { const p = iso(COTTAGE_TILE.x, COTTAGE_TILE.y); drawCottage(ctx, p.x, p.y, t); } });
     const readyCells = state.cells.filter((cell) => cell.type === 'honey' && cell.fill >= CELL_CAPACITY).length;
     objs.push({
       d: HIVE_TILE.x + HIVE_TILE.y + 0.01,
@@ -299,30 +323,6 @@ export class GardenScene {
     ctx.beginPath(); ctx.roundRect(x - 10, y - 1.5, 20 * p, 3, 1.5); ctx.fill();
   }
 
-  drawScenery(ctx, s, t) {
-    const p = iso(s.x, s.y);
-    if (s.kind === 'tree') drawRoundTree(ctx, p.x, p.y, s.s, s.c);
-    else if (s.kind === 'blossom') {
-      shadow(ctx, p.x, p.y + 2, 24, 10);
-      ctx.fillStyle = '#a0765a';
-      ctx.fillRect(p.x - 3.5, p.y - 30, 7, 30);
-      drawBlossomCanopy(ctx, p.x, p.y - 44, 1.1, 5);
-      for (let i = 0; i < 3; i++) {
-        const ph = (t * 0.2 + i / 3) % 1;
-        ctx.globalAlpha = 1 - ph;
-        ellipse(ctx, p.x - 20 + i * 18 + Math.sin(t + i) * 6, p.y - 40 + ph * 50, 1.8, 1.1, '#ffc1d6');
-        ctx.globalAlpha = 1;
-      }
-    } else if (s.kind === 'bushrow') {
-      [[-0.5, 0], [0, 0], [0.5, 0]].forEach(([dx], i) => {
-        const q = s.x < 0 ? iso(s.x, s.y + dx * 2) : iso(s.x + dx * 2, s.y);
-        ellipse(ctx, q.x, q.y - 7, 13, 11, i % 2 ? '#9ad895' : '#8fd18b', 'rgba(70,120,70,0.3)', 0.6);
-        ellipse(ctx, q.x - 3, q.y - 12, 2, 2, '#fff');
-        ellipse(ctx, q.x + 4, q.y - 6, 2, 2, '#ffd1e0');
-      });
-    }
-  }
-
   // ------------------------------------------------------------ input
   hitFlyer(wx, wy) {
     let best = null; let bd = 16;
@@ -372,7 +372,7 @@ export class GardenScene {
     }
     if (!hit) {
       const t = this.tileAt(w.x, w.y);
-      if (inGrid(t.x, t.y)) {
+      if (isLand(t.x, t.y)) {
         const p = iso(t.x, t.y);
         this.fx.burst(p.x, p.y, 'leaf', 5);
         const seeds = Object.values(state.inventory.seeds).reduce((a, b) => a + b, 0);
@@ -427,7 +427,12 @@ export class GardenScene {
     const hit = this.hitObject(w.x, w.y);
     if (hit && hit.kind === 'gift') return this.tapGift(hit.g);
     const target = hit && (hit.kind === 'flower' || hit.kind === 'decor') ? { x: hit.x, y: hit.y } : t;
-    if (!inGrid(target.x, target.y)) { this.selected = null; this.hooks.selectionChanged(null); return; }
+    if (!isLand(target.x, target.y)) {
+      this.selected = null;
+      this.hooks.selectionChanged(null);
+      if (this.edit || this.moving) this.hooks.hint('Plants and decorations go on the grass 🌱');
+      return;
+    }
     if (isHiveTile(target.x, target.y)) { this.hooks.hint('The hive stays put — it’s the heart of your garden!'); return; }
     const p = iso(target.x, target.y);
 

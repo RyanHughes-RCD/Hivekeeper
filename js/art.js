@@ -54,62 +54,6 @@ export function tilePath(ctx, cx, cy, s = 1) {
   ctx.closePath();
 }
 
-// ---------------------------------------------------------------- ground
-export function drawGrassTile(ctx, cx, cy, x, y, highlight) {
-  const alt = (x + y) % 2 === 0;
-  tilePath(ctx, cx, cy);
-  ctx.fillStyle = alt ? '#c3eaa9' : '#b6e39d';
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-  ctx.lineWidth = 0.8;
-  ctx.stroke();
-  // tiny tufts and wildflower specks for texture
-  const seed = x * 31 + y * 17;
-  for (let k = 0; k < 3; k++) {
-    const u = hash(seed + k) - 0.5, v = hash(seed + k + 9) - 0.5;
-    const px = cx + (u - v) * A * 0.9, py = cy + (u + v) * B * 0.9;
-    ctx.strokeStyle = '#94cf7c';
-    ctx.lineWidth = 0.9;
-    ctx.beginPath();
-    ctx.moveTo(px - 1.5, py); ctx.lineTo(px - 2.2, py - 3);
-    ctx.moveTo(px, py); ctx.lineTo(px, py - 3.6);
-    ctx.moveTo(px + 1.5, py); ctx.lineTo(px + 2.2, py - 3);
-    ctx.stroke();
-  }
-  if (hash(seed + 99) > 0.72) {
-    const u = hash(seed + 3) - 0.5, v = hash(seed + 5) - 0.5;
-    ellipse(ctx, cx + (u - v) * A * 0.8, cy + (u + v) * B * 0.8, 1.3, 1.3, hash(seed) > 0.5 ? '#fff' : '#ffd6e6');
-  }
-  if (highlight) {
-    tilePath(ctx, cx, cy, 0.94);
-    ctx.fillStyle = highlight;
-    ctx.fill();
-  }
-}
-
-export function drawPlatform(ctx, cx, cy, half) {
-  isoBox(ctx, cx, cy, half, half, -18, 18, '#b6e39d', '#e2bf98', '#d4ad85', 'rgba(120,85,60,0.35)');
-  // grassy lip
-  const lip = (i0, j0, i1, j1) => {
-    ctx.strokeStyle = '#a7d98d';
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    const a = P(cx, cy, i0, j0, 0), b = P(cx, cy, i1, j1, 0);
-    ctx.moveTo(a[0], a[1] + 1.5); ctx.lineTo(b[0], b[1] + 1.5);
-    ctx.stroke();
-  };
-  lip(-half, half, half, half);
-  lip(half, -half, half, half);
-  // little pebbles in the dirt
-  for (let k = 0; k < 14; k++) {
-    const u = hash(k * 3.1) * 2 - 1;
-    const onLeft = k % 2 === 0;
-    const pt = onLeft ? P(cx, cy, u * half, half, 4 + hash(k) * 10) : P(cx, cy, half, u * half, 4 + hash(k) * 10);
-    ellipse(ctx, pt[0], pt[1], 1.6, 1.1, 'rgba(255,255,255,0.35)');
-  }
-}
-
 // ---------------------------------------------------------------- bees
 function wing(ctx, x, y, rx, ry, rot, color) {
   ctx.save();
@@ -677,16 +621,6 @@ export function drawBlossomCanopy(ctx, x, y, s = 1, seed = 0) {
   const blobs = [[-14, 4, 12], [13, 3, 12], [0, -8, 14], [-6, 8, 11], [8, 9, 11], [0, 2, 13]];
   blobs.forEach(([dx, dy, r], i) => ellipse(ctx, x + dx * s, y + dy * s, r * s, r * 0.9 * s, i % 2 ? '#ffc8da' : '#ffd6e4', 'rgba(220,120,150,0.3)', 0.6));
   for (let i = 0; i < 12; i++) ellipse(ctx, x + (hash(seed + i) - 0.5) * 34 * s, y + (hash(seed + i + 5) - 0.5) * 22 * s, 1.5 * s, 1.5 * s, i % 3 ? '#fff' : '#ff9fbf');
-}
-
-export function drawRoundTree(ctx, x, y, s = 1, colors = ['#9ad895', '#8fd18b', '#a8e0a0']) {
-  shadow(ctx, x, y + 2, 20 * s, 8 * s);
-  ctx.fillStyle = '#a0765a';
-  ctx.fillRect(x - 3 * s, y - 22 * s, 6 * s, 22 * s);
-  [[-10, -30, 13], [10, -31, 13], [0, -42, 15], [0, -28, 14]].forEach(([dx, dy, r], i) => {
-    ellipse(ctx, x + dx * s, y + dy * s, r * s, r * 0.92 * s, colors[i % colors.length], 'rgba(70,120,70,0.3)', 0.7);
-  });
-  ellipse(ctx, x - 5 * s, y - 46 * s, 5 * s, 3 * s, 'rgba(255,255,255,0.35)');
 }
 
 // ---------------------------------------------------------------- hive & cottage

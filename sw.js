@@ -1,6 +1,6 @@
 // Little Bee Haven — offline support. Caches the app shell so the game opens
 // without a connection once it has been loaded once.
-const CACHE = 'bee-haven-v1';
+const CACHE = 'bee-haven-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,8 @@ const ASSETS = [
   './js/state.js',
   './js/data.js',
   './js/art.js',
+  './js/map.js',
+  './assets/garden-map.jpg',
   './js/fx.js',
   './js/garden.js',
   './js/hive.js',

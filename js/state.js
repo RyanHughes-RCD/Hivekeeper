@@ -2,9 +2,10 @@
 // Everything time-based is stored as wall-clock timestamps so it keeps
 // progressing while the game is closed.
 import {
-  SAVE_KEY, GRID, HIVE_TILE, HIVE_RINGS, CELL_CAPACITY, MAX_GIFTS, MAX_OFFLINE_SECONDS, MAX_BEES,
+  SAVE_KEY, HIVE_TILE, HIVE_RINGS, CELL_CAPACITY, MAX_GIFTS, MAX_OFFLINE_SECONDS, MAX_BEES,
   SPECIES, SPECIES_ORDER, BEE_NAMES, FLOWERS, DECOR, EGGS, xpForLevel, honeyPerCell, cellUnlockCost,
 } from './data.js';
+import { MAP } from './map.js';
 
 // ---------- tiny event bus (UI listens for toasts, floating text, sounds) ----------
 const listeners = {};
@@ -142,7 +143,16 @@ export function resetGame() {
 // ---------- derived values ----------
 export const tileKey = (x, y) => `${x},${y}`;
 export const isHiveTile = (x, y) => x === HIVE_TILE.x && y === HIVE_TILE.y;
-export const inGrid = (x, y) => x >= 0 && y >= 0 && x < GRID && y < GRID;
+// Buildable tiles come from the garden map picture (grass only: no river, cliffs or
+// waterfall), minus the patch of lawn the cottage stands on.
+export const COTTAGE_TILE = { x: -1.75, y: -1.75 };
+const LAND = new Set(MAP.land
+  .filter(([x, y]) => !(x >= -3 && x <= -1 && y >= -3 && y <= -1))
+  .map(([x, y]) => `${x},${y}`));
+export const LAND_TILES = MAP.land.filter(([x, y]) => LAND.has(`${x},${y}`)).map(([x, y]) => ({ x, y }));
+export const isLand = (x, y) => LAND.has(`${x},${y}`);
+// gifts and idle bees stay near the hive so they turn up where the player is looking
+export const nearHive = (x, y, r = 6) => Math.max(Math.abs(x - HIVE_TILE.x), Math.abs(y - HIVE_TILE.y)) <= r;
 
 export function flowerStatus(tile, now = Date.now()) {
   const f = FLOWERS[tile.type];
@@ -209,16 +219,12 @@ function scheduleGift(from) {
   state.nextGiftAt = from + rand(base * 0.7, base * 1.3) * 1000;
 }
 
+// gifts turn up close to the hive or right next to something the player has placed
 function freeGrassTiles() {
-  const free = [];
-  for (let x = 0; x < GRID; x++) {
-    for (let y = 0; y < GRID; y++) {
-      if (isHiveTile(x, y) || state.tiles[tileKey(x, y)]) continue;
-      if (state.gifts.some((g) => g.x === x && g.y === y)) continue;
-      free.push({ x, y });
-    }
-  }
-  return free;
+  const placed = Object.keys(state.tiles).map((k) => k.split(',').map(Number));
+  const homey = (x, y) => nearHive(x, y, 3) || placed.some(([px, py]) => Math.abs(px - x) <= 1 && Math.abs(py - y) <= 1);
+  return LAND_TILES.filter(({ x, y }) => homey(x, y) && !isHiveTile(x, y) && !state.tiles[tileKey(x, y)]
+    && !state.gifts.some((g) => g.x === x && g.y === y));
 }
 
 function spawnGifts(now) {
@@ -419,7 +425,7 @@ export function unlockCell(idx, type) {
 }
 
 export function tileFree(x, y) {
-  return inGrid(x, y) && !isHiveTile(x, y) && !state.tiles[tileKey(x, y)];
+  return isLand(x, y) && !isHiveTile(x, y) && !state.tiles[tileKey(x, y)];
 }
 
 export function placeItem(kind, id, x, y, now = Date.now()) {
@@ -465,4 +471,4 @@ export function renameBee(id, name) {
   return true;
 }
 
-export { CELL_CAPACITY, GRID, HIVE_TILE, MAX_BEES };
+export { CELL_CAPACITY, HIVE_TILE, MAX_BEES };

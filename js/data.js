@@ -1,7 +1,6 @@
 // Little Bee Haven — static game data (species, flowers, decorations, eggs, tuning).
 
 export const SAVE_KEY = 'littlebeehaven.save.v1';
-export const GRID = 7;                 // garden is GRID x GRID isometric tiles
 export const HIVE_TILE = { x: 2, y: 2 };
 export const HIVE_RINGS = 3;           // hex rings around the queen cell (37 cells total)
 export const CELL_CAPACITY = 100;      // nectar needed to cap a honey cell

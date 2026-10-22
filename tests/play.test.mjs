@@ -48,6 +48,13 @@ const tileScreen = (x, y, lift = 0) => S(([x, y, lift]) => {
   const g = window.__haven.garden;
   return g.toScreen((x - y) * 32, (x + y) * 16 - lift);
 }, [x, y, lift]);
+// scroll the garden so a tile is in the middle of the screen
+const lookAt = (x, y) => S(([x, y]) => {
+  const g = window.__haven.garden;
+  g.offX = g.w / 2 - (x - y) * 32 * g.zoom;
+  g.offY = g.h / 2 - (x + y) * 16 * g.zoom;
+  g.clamp();
+}, [x, y]);
 const cellScreen = (i) => S((i) => window.__haven.hive.cellScreenPos(i), i);
 
 console.log('Little Bee Haven — iPhone interaction tests');
@@ -218,12 +225,43 @@ await step('decorate: plant a seed, move and put away decorations', async () => 
   await page.locator('#tray-done').tap();
 });
 
+await step('map: the river is off-limits, the island across it is buildable', async () => {
+  await closeDialogs();
+  await S(() => { window.__haven.state.inventory.seeds.tulip = 2; });
+  // a tile on the left bend of the river, and one in the middle of the island it loops around
+  const spots = await S(async () => {
+    const { MAP } = await import('./js/map.js');
+    const land = new Set(MAP.land.map(([x, y]) => `${x},${y}`));
+    return { water: land.has('8,-1') ? null : [8, -1], island: land.has('10,-8') ? [10, -8] : null };
+  });
+  assert(spots.island && spots.water, `could not find test tiles ${JSON.stringify(spots)}`);
+  await page.locator('#btn-decorate').tap();
+  await page.locator('.tray-item[data-kind="seed"][data-id="tulip"]').tap();
+  // look at the river
+  await lookAt(...spots.water);
+  await page.waitForTimeout(200);
+  await shot('09-river');
+  let p = await tileScreen(...spots.water);
+  await tap(p.x, p.y);
+  await page.waitForTimeout(150);
+  assert(!(await S((k) => window.__haven.state.tiles[k], spots.water.join(','))), 'planted in the river');
+  await lookAt(...spots.island);
+  p = await tileScreen(...spots.island);
+  await tap(p.x, p.y);
+  await page.waitForTimeout(150);
+  const t = await S((k) => window.__haven.state.tiles[k], spots.island.join(','));
+  assert(t && t.type === 'tulip', 'could not plant on the island');
+  await page.locator('#tray-done').tap();
+  await S(() => window.__haven.garden.center());
+});
+
 await step('gifts appear in the garden and open with a reward', async () => {
   await closeDialogs();
   await S(() => { window.__haven.state.gifts = []; window.__haven.state.nextGiftAt = Date.now() - 1; });
   await page.waitForTimeout(300);
   const g = await S(() => window.__haven.state.gifts[0]);
   assert(g, 'gift did not spawn');
+  await lookAt(g.x, g.y);
   const p = await tileScreen(g.x, g.y, 8);
   await tap(p.x, p.y);
   await page.waitForTimeout(400);
