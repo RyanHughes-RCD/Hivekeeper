@@ -1,13 +1,13 @@
 // Little Bee Haven — HTML overlay UI: HUD, sheets, dialogs, shop, bee collection, decorate tray.
 import {
-  SPECIES, SPECIES_ORDER, RARITY, FLOWERS, FLOWER_ORDER, DECOR, DECOR_ORDER, EGGS, EGG_ORDER,
+  SPECIES, SPECIES_ORDER, RARITY, LEGS, WINGS, FLOWERS, FLOWER_ORDER, DECOR, DECOR_ORDER, EGGS, EGG_ORDER,
   xpForLevel, honeyPerCell, MAX_BEES, MAX_OFFLINE_SECONDS,
 } from './data.js';
 import {
-  state, buy, canAfford, nectarRate, flowerBonus, pollenBonus, giftBonus, sleepBonus, renameBee,
+  state, buy, canAfford, nectarRate, beeNectar, beePollen, flowerBonus, pollenBonus, giftBonus, sleepBonus, renameBee,
   freeNurseryIndex, placeEgg, unlockCell, nextCellCost, resetGame, tileKey, CELL_CAPACITY,
 } from './state.js';
-import { beeIcon, flowerIcon, seedIcon, decorIcon, eggIcon, honeyIcon, pollenIcon, giftIcon, img } from './icons.js';
+import { beeIcon, beeIconFor, flowerIcon, seedIcon, decorIcon, eggIcon, honeyIcon, pollenIcon, giftIcon, img } from './icons.js';
 import { fmt } from './garden.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -198,11 +198,21 @@ export function openBeedex() {
 }
 
 function traitList(sp) {
-  const t = [`🍯 ${(sp.nectar * 60).toFixed(0)} nectar/min`];
+  const t = [`🍯 ${(sp.nectar * 60).toFixed(0)} nectar/min base`];
   if (sp.pollen) t.push(`🌼 +${sp.pollen} pollen per flower`);
   if (sp.gift) t.push(`🎁 gifts ${Math.round(sp.gift * 100)}% sooner`);
   if (sp.sleep) t.push(`🌙 +${Math.round(sp.sleep * 100)}% honey while away`);
   return t.map((x) => `<span class="trait">${x}</span>`).join('');
+}
+
+// one bee's three parts, each in its rarity colour, plus what it brings home
+function partsHtml(b) {
+  const sp = SPECIES[b.species];
+  const chip = (label, part) => `<span class="part" style="--rar:${RARITY[part.rarity].color}"><small>${label}</small><b>${part.name.replace(/ (Legs|Wings)$/, '')}</b><i>${RARITY[part.rarity].label}</i></span>`;
+  const legs = LEGS[b.legs], wings = WINGS[b.wings];
+  const boost = Math.round((legs.nectar + wings.nectar) * 100);
+  return `<div class="parts">${chip('Body', { name: sp.name.replace(/ Bee$/, ''), rarity: sp.rarity })}${chip('Legs', legs)}${chip('Wings', wings)}</div>
+    <p class="yield">🍯 <b>${(beeNectar(b) * 60).toFixed(0)}</b> nectar/min <span>(body ${(sp.nectar * 60).toFixed(0)} + ${boost}% from legs &amp; wings)</span>${beePollen(b) ? ` · 🌼 +${beePollen(b)} pollen` : ''}${sp.gift ? ` · 🎁 gifts ${Math.round(sp.gift * 100)}% sooner` : ''}${sp.sleep ? ` · 🌙 +${Math.round(sp.sleep * 100)}% while away` : ''}</p>`;
 }
 
 function openSpecies(id) {
@@ -211,13 +221,13 @@ function openSpecies(id) {
   const m = open('sheet', `${sheetHead(sp.name, `<span style="color:${RARITY[sp.rarity].color};font-weight:800">${RARITY[sp.rarity].label}</span>`)}
     <div class="species-hero">${img(beeIcon(id), 'hero')}<p>${sp.desc}</p><div class="traits">${traitList(sp)}</div></div>
     <h3 class="list-title">Your ${sp.name}s</h3>
-    <div class="bee-list">${mine.map((b) => `<div class="bee-row">${img(beeIcon(id), 'mini-bee')}<span class="bee-name">${esc(b.name)}</span><button class="small" data-rename="${b.id}">Rename</button></div>`).join('') || '<p class="note">None right now.</p>'}</div>`);
+    <div class="bee-list">${mine.map((b) => `<div class="bee-row">${img(beeIconFor(b), 'mini-bee')}<div class="bee-info"><div class="bee-top"><span class="bee-name">${esc(b.name)}</span><button class="small" data-rename="${b.id}">Rename</button></div>${partsHtml(b)}</div></div>`).join('') || '<p class="note">None right now.</p>'}</div>`);
   m.el.addEventListener('click', (e) => {
     const b = e.target.closest('[data-rename]'); if (!b) return;
     const bee = state.bees.find((x) => x.id === b.dataset.rename);
     const name = window.prompt('Name your bee', bee.name);
     if (name && renameBee(bee.id, name)) {
-      b.parentElement.querySelector('.bee-name').textContent = bee.name;
+      b.closest('.bee-row').querySelector('.bee-name').textContent = bee.name;
       hooks.changed?.();
     }
   });
@@ -294,11 +304,11 @@ export function hatchReveal(res) {
   const m = open('dialog', `<div class="card-body reveal" style="--rar:${rar.color}">
     <div class="rays"></div>
     ${res.isNew ? '<span class="badge-new">New species!</span>' : ''}
-    ${img(beeIcon(res.bee.species), 'hero pop')}
+    ${img(beeIconFor(res.bee), 'hero pop')}
     <h2>${esc(res.bee.name)} hatched!</h2>
     <p class="rarity" style="color:${rar.color}">${rar.label} ${sp.name}</p>
     <p>${sp.desc}</p>
-    <div class="traits">${traitList(sp)}</div>
+    ${partsHtml(res.bee)}
     <button class="primary" data-close>Welcome, ${esc(res.bee.name)}!</button>
     <button class="ghost" data-rename>Rename</button></div>`, { cls: 'reveal-card' });
   m.el.querySelector('[data-rename]').addEventListener('click', () => {

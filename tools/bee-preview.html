@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8"><title>Bee preview</title>
+<body style="margin:0;background:#fff8ec;font-family:ui-rounded,system-ui,sans-serif">
+<canvas id="c"></canvas>
+<script type="module">
+// Renders a sheet of sample bees: every body with random legs and wings.
+// Open via the local server: http://localhost:8080/tools/bee-preview.html?seed=3
+import { drawBeeTop, spritesReady } from '../js/beeart.js';
+import { SPECIES, SPECIES_ORDER, LEGS, WINGS, RARITY } from '../js/data.js';
+let seed = Number(new URLSearchParams(location.search).get('seed') || 1);
+const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+await spritesReady;
+const cols = 4, cw = 260, ch = 330;
+const c = document.getElementById('c');
+c.width = cols * cw; c.height = Math.ceil(SPECIES_ORDER.length / cols) * ch;
+const ctx = c.getContext('2d');
+SPECIES_ORDER.forEach((sp, i) => {
+  const x = (i % cols) * cw + cw / 2, y = Math.floor(i / cols) * ch;
+  const legs = Math.floor(rnd() * LEGS.length), wings = Math.floor(rnd() * WINGS.length);
+  drawBeeTop(ctx, x, y + 135, 92, { species: sp, legs, wings }, 0.4, {});
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#5c4033'; ctx.font = '800 17px ui-rounded, system-ui';
+  ctx.fillText(SPECIES[sp].name, x, y + 268);
+  ctx.font = '700 13px ui-rounded, system-ui';
+  ctx.fillStyle = RARITY[LEGS[legs].rarity].color; ctx.fillText(`${LEGS[legs].name} · ${RARITY[LEGS[legs].rarity].label}`, x, y + 288);
+  ctx.fillStyle = RARITY[WINGS[wings].rarity].color; ctx.fillText(`${WINGS[wings].name} · ${RARITY[WINGS[wings].rarity].label}`, x, y + 306);
+});
+window.done = true;
+</script>

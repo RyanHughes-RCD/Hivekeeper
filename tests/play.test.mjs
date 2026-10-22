@@ -80,10 +80,19 @@ await step('tapping a flower with pollen collects pollen', async () => {
 });
 
 await step('tapping a bee in flight makes it happy', async () => {
-  await page.waitForTimeout(2500);
+  // wait until some bee is mid-flight somewhere tappable
+  await page.waitForFunction(() => {
+    const g = window.__haven.garden;
+    return g.flyers.some((b) => b.mode === 'out' && b.p < 0.5 && !g.hitObject(b.x, b.y));
+  }, null, { timeout: 15000 });
   const pos = await S(() => {
     const g = window.__haven.garden;
-    const f = g.flyers.find((b) => b.mode !== 'inside');
+    // a bee early in its flight out (so it won't slip back into the hive mid-tap), away from
+    // ready flowers and the hive, which take the tap first
+    const f = g.flyers.find((b) => {
+      if (b.mode !== 'out' || b.p > 0.5) return false;
+      return !g.hitObject(b.x, b.y);
+    });
     return f ? { ...g.toScreen(f.x, f.y), id: f.id } : null;
   });
   assert(pos, 'no bee flying');
@@ -125,8 +134,33 @@ await step('a ready egg hatches into a new bee with a reveal card', async () => 
   const after = await S(() => window.__haven.state.bees.length);
   assert(after === before + 1, `bees ${before} -> ${after}`);
   assert(await page.locator('.modal.show .reveal').count() === 1, 'no hatch reveal');
+  // the new bee is built from a body, a set of legs and a pair of wings, all shown on the card
+  const bee = await S(() => window.__haven.state.bees.at(-1));
+  assert(Number.isInteger(bee.legs) && Number.isInteger(bee.wings), `bee has no parts ${JSON.stringify(bee)}`);
+  assert(await page.locator('.modal.show .reveal .part').count() === 3, 'hatch card does not list body, legs and wings');
   await shot('03-hatch');
   await closeDialogs();
+});
+
+await step('legs and wings add to the honey a bee makes', async () => {
+  const r = await S(async () => {
+    const { LEGS, WINGS, SPECIES } = await import('./js/data.js');
+    const { beeNectar, nectarRate, flowerBonus } = await import('./js/state.js');
+    const s = window.__haven.state;
+    const b = s.bees[0];
+    const plain = SPECIES[b.species].nectar;
+    const expect = plain * (1 + LEGS[b.legs].nectar + WINGS[b.wings].nectar);
+    // swapping in legendary parts must raise the hive's nectar rate
+    const before = nectarRate();
+    const keep = [b.legs, b.wings];
+    b.legs = LEGS.findIndex((l) => l.rarity === 'legendary');
+    b.wings = WINGS.findIndex((w) => w.rarity === 'legendary');
+    const after = nectarRate();
+    [b.legs, b.wings] = keep;
+    return { got: beeNectar(b), expect, plain, before, after };
+  });
+  assert(Math.abs(r.got - r.expect) < 1e-9 && r.got > r.plain, JSON.stringify(r));
+  assert(r.after > r.before, `better parts did not raise the nectar rate ${JSON.stringify(r)}`);
 });
 
 await step('building a new cell from a locked slot', async () => {
@@ -183,6 +217,8 @@ await step('bee collection shows discovered species', async () => {
   await page.locator('.dex-card:not(.unknown)').first().tap();
   await page.waitForTimeout(400);
   assert(await page.locator('.species-hero').count() === 1, 'species detail missing');
+  assert(await page.locator('.bee-row .parts').count() >= 1, 'bee list does not show each bee\'s parts');
+  await shot('05b-species');
   await page.locator('.modal.show [data-close]').last().tap();
   await page.waitForTimeout(300);
   await page.locator('.modal.show [data-close]').last().tap();

@@ -86,6 +86,35 @@ export const SPECIES = {
 };
 export const SPECIES_ORDER = Object.keys(SPECIES);
 
+// Every bee is built from its species' body plus a set of legs and a pair of
+// wings, rolled when it hatches. Rarer parts make a bee more productive:
+//   nectar: extra share of the body's nectar (0.2 = +20%)
+//   pollen: extra pollen whenever you collect from a flower
+// Index = sprite number in assets/bees (legs-<n>.png, wings-<n>.png).
+export const LEGS = [
+  { name: 'Cocoa Legs',     rarity: 'common',    nectar: 0.05, pollen: 0 },
+  { name: 'Walnut Legs',    rarity: 'common',    nectar: 0.05, pollen: 0 },
+  { name: 'Caramel Legs',   rarity: 'uncommon',  nectar: 0.10, pollen: 0 },
+  { name: 'Plum Legs',      rarity: 'epic',      nectar: 0.25, pollen: 1 },
+  { name: 'Moss Legs',      rarity: 'uncommon',  nectar: 0.10, pollen: 0 },
+  { name: 'Hazel Legs',     rarity: 'common',    nectar: 0.05, pollen: 0 },
+  { name: 'Toffee Legs',    rarity: 'uncommon',  nectar: 0.10, pollen: 0 },
+  { name: 'Rosewood Legs',  rarity: 'rare',      nectar: 0.15, pollen: 1 },
+  { name: 'Olive Legs',     rarity: 'common',    nectar: 0.05, pollen: 0 },
+  { name: 'Bluebell Legs',  rarity: 'legendary', nectar: 0.35, pollen: 2 },
+  { name: 'Amber Legs',     rarity: 'rare',      nectar: 0.15, pollen: 1 },
+  { name: 'Chestnut Legs',  rarity: 'common',    nectar: 0.05, pollen: 0 },
+];
+export const WINGS = [
+  { name: 'Honeyglass Wings', rarity: 'common',    nectar: 0.10 },
+  { name: 'Pearl Wings',      rarity: 'rare',      nectar: 0.30 },
+  { name: 'Frost Wings',      rarity: 'epic',      nectar: 0.45 },
+  { name: 'Meadow Wings',     rarity: 'common',    nectar: 0.10 },
+  { name: 'Fern Wings',       rarity: 'uncommon',  nectar: 0.20 },
+  { name: 'Rainbow Wings',    rarity: 'legendary', nectar: 0.70 },
+];
+export const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+
 export const BEE_NAMES = [
   'Pip', 'Honeydew', 'Buttercup', 'Biscuit', 'Clementine', 'Dot', 'Fizz', 'Maple', 'Nutmeg', 'Poppy',
   'Pudding', 'Sunny', 'Tink', 'Waffle', 'Bramble', 'Pebble', 'Mochi', 'Toffee', 'Willow', 'Bean',

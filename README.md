@@ -14,6 +14,15 @@ A cosy, mobile-first beekeeping game. Grow a pastel isometric cottage garden, pe
 
 **The garden map** is the painting in `assets/garden-map.jpg`: meadows, a river looping round an island, and a waterfall. You can build on any grass tile, including the island, but not on the river or cliffs. Drag sideways to explore it. If you replace the picture (a higher-resolution export of the same map works best), run `python3 tools/make-map.py --keep-grid`. It keeps the current tile grid and rebuilds `js/map.js`, the list of buildable tiles. Leave out `--keep-grid` only for a map with a painted checkerboard, which the script then measures to find the grid.
 
+**Every bee is built from three parts**: a body (its species), a set of legs and a pair of wings, drawn from the sprite sheets in `assets/bees/source/`. Each part has its own rarity, rolled when the bee hatches with the same odds as the egg, so Blossom and Royal eggs give better parts. A bee's honey output is its body's base nectar, boosted by its parts:
+
+| Part | Common | Uncommon | Rare | Epic | Legendary |
+|---|---|---|---|---|---|
+| Legs (12 sets) | +5% nectar | +10% | +15%, +1 pollen | +25%, +1 pollen | +35%, +2 pollen |
+| Wings (6 pairs) | +10% nectar | +20% | +30% | +45% | +70% |
+
+The Bees screen shows each of your bees with its parts and nectar per minute. To change the art, replace the sheets in `assets/bees/source/` (same layout) and run `python3 tools/make-bee-sprites.py`. It removes the backgrounds, including the painted checkerboard behind the wings, cuts out every part and records where legs and wings attach. `tools/bee-preview.html` (served locally) shows a sheet of sample bees.
+
 **Progress saves automatically** to the device (in `localStorage`), every few seconds and whenever the app goes to the background. **While the game is closed** (up to 8 hours), honey cells keep filling, flowers keep growing, eggs keep hatching and gifts keep appearing. You get a "Welcome back" summary when you return.
 
 ## Project files
@@ -35,7 +44,9 @@ js/ui.js               shop, bee collection, dialogs, decorate tray
 js/icons.js, fx.js, audio.js   UI icons, particles, synthesized sounds
 icons/                 app icons (rendered from the game art)
 tests/play.test.mjs    end-to-end touch tests on an emulated iPhone
-tools/                 local server, icon and map generators
+tools/                 local server; icon, map and bee-sprite generators; bee preview page
+assets/bees/           bee part sprites (+ source sheets)
+js/beeart.js           assembles a bee from body + legs + wings
 ```
 
 ## Publish on GitHub Pages

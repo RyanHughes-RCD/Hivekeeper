@@ -1,10 +1,11 @@
 // Little Bee Haven — renders game art into small cached images for the HTML UI.
-import { drawBee, drawFlowerTile, drawDecor, drawEgg, drawSeedPacket, drawHoneyDrop, ellipse, drawGift } from './art.js';
+import { drawFlowerTile, drawDecor, drawEgg, drawSeedPacket, drawHoneyDrop, ellipse, drawGift } from './art.js';
+import { drawBeeTop, beeSpritesLoaded, beeAspect } from './beeart.js';
 
 const cache = new Map();
 const DPR = Math.min(3, window.devicePixelRatio || 1);
 
-function render(key, w, h, fn) {
+function render(key, w, h, fn, cacheable = true) {
   if (cache.has(key)) return cache.get(key);
   const c = document.createElement('canvas');
   c.width = Math.round(w * DPR); c.height = Math.round(h * DPR);
@@ -12,13 +13,36 @@ function render(key, w, h, fn) {
   ctx.scale(DPR, DPR);
   fn(ctx, w, h);
   const url = c.toDataURL('image/png');
-  cache.set(key, url);
+  if (cacheable) cache.set(key, url);
   return url;
 }
 
-export const beeIcon = (species, silhouette = false) => render(`bee:${species}:${silhouette}`, 64, 64, (ctx) => {
-  drawBee(ctx, 30, 36, 15, species, 0.3, { flap: false, silhouette });
-});
+// A bee from above, fitted into a square icon. Bees aren't cached until their
+// sprites have loaded, so an early icon gets redrawn properly next time.
+function beeImage(key, looks, silhouette) {
+  return render(key, 96, 96, (ctx) => {
+    const size = Math.min(44, 78 / beeAspect(looks.species));
+    drawBeeTop(ctx, 48, 48, size, looks, 0.4, {});
+    if (silhouette) {
+      // undiscovered: a soft sandy shape with a question mark
+      ctx.globalCompositeOperation = 'source-in';
+      ctx.fillStyle = '#cdb89a';
+      ctx.fillRect(0, 0, 96, 96);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = '#9c8466';
+      ctx.font = '800 30px ui-rounded, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('?', 48, 52);
+    }
+  }, beeSpritesLoaded());
+}
+
+// the species as a whole (collection grid): its body with plain legs and wings
+export const beeIcon = (species, silhouette = false) => beeImage(`bee:${species}:${silhouette}`, { species, legs: 0, wings: 0 }, silhouette);
+
+// one particular bee, with its own legs and wings
+export const beeIconFor = (bee) => beeImage(`bee:${bee.species}:${bee.legs}:${bee.wings}`, bee, false);
 
 export const flowerIcon = (type) => render(`flower:${type}`, 64, 64, (ctx) => {
   ctx.translate(32, 44);

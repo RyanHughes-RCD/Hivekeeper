@@ -3,12 +3,14 @@ import { EGGS, honeyPerCell } from './data.js';
 import {
   state, harvestCell, eggStatus, cellNeighborsOpen, nextCellCost, CELL_CAPACITY,
 } from './state.js';
-import { drawBee, drawEgg, drawHoneyDrop, ellipse, sparkle, hash } from './art.js';
+import { drawEgg, drawHoneyDrop, ellipse, sparkle, hash } from './art.js';
 import { Fx } from './fx.js';
+import { drawBeeTop } from './beeart.js';
 import { fmt } from './garden.js';
 
 const SQ3 = Math.sqrt(3);
 const MAX_CRAWLERS = 16;
+const QUEEN_LOOKS = { species: 'queen', legs: 0, wings: 1 };
 
 function hexPath(ctx, x, y, r) {
   ctx.beginPath();
@@ -66,12 +68,12 @@ export class HiveScene {
     const old = new Map(this.crawlers.map((c) => [c.id, c]));
     this.crawlers = want.map((b, i) => {
       const o = old.get(b.id);
-      if (o) { o.species = b.species; o.name = b.name; return o; }
+      if (o) { Object.assign(o, { species: b.species, name: b.name, legs: b.legs, wings: b.wings }); return o; }
       const open = state.cells.filter((c) => c.type !== 'locked' && c.type !== 'queen');
       const cell = open[i % Math.max(1, open.length)] || state.cells[0];
       const p = this.cellPos(cell);
       p.x += this.size * 0.98;
-      return { id: b.id, name: b.name, species: b.species, x: p.x, y: p.y, tx: p.x, ty: p.y, wait: Math.random() * 2, flip: false, phase: hash(i + 2) * 9, buzz: 0, happy: 0 };
+      return { id: b.id, name: b.name, species: b.species, legs: b.legs, wings: b.wings, x: p.x, y: p.y, tx: p.x, ty: p.y, wait: Math.random() * 2, angle: hash(i + 5) * 6.28, phase: hash(i + 2) * 9, buzz: 0, happy: 0 };
     });
   }
 
@@ -96,7 +98,10 @@ export class HiveScene {
       }
       const step = Math.min(d, speed * dt);
       c.x += (dx / d) * step; c.y += (dy / d) * step;
-      c.flip = dx < 0;
+      // turn toward where it's walking (sprites face up the screen at angle 0)
+      let turn = Math.atan2(dy, dx) + Math.PI / 2 - c.angle;
+      turn = Math.atan2(Math.sin(turn), Math.cos(turn));
+      c.angle += turn * Math.min(1, dt * 8);
     }
   }
 
@@ -163,9 +168,9 @@ export class HiveScene {
     state.cells.forEach((c, i) => this.drawCell(ctx, c, i, t, now));
 
     for (const c of this.crawlers) {
-      const bs = s * 0.24 * (1 + c.happy * 0.25);
-      ellipse(ctx, c.x, c.y + bs * 1.1, bs * 0.9, bs * 0.3, 'rgba(110,50,0,0.18)');
-      drawBee(ctx, c.x, c.y, bs, c.species, t, { flip: c.flip, flap: c.buzz > 0 || c.wait <= 0, phase: c.phase });
+      const bs = s * 0.4 * (1 + c.happy * 0.25);
+      ellipse(ctx, c.x + 2, c.y + 3, bs * 0.75, bs * 0.95, 'rgba(110,50,0,0.16)');
+      drawBeeTop(ctx, c.x, c.y, bs, c, t, { angle: c.angle, flap: c.buzz > 0, walk: c.wait <= 0, phase: c.phase });
       if (c.happy > 0) {
         c.happy = Math.max(0, c.happy - 0.015);
       }
@@ -222,7 +227,8 @@ export class HiveScene {
       ctx.strokeStyle = `rgba(255,255,255,${0.4 + glow * 0.4})`;
       ctx.lineWidth = 2;
       ctx.stroke();
-      drawBee(ctx, p.x - s * 0.05, p.y + Math.sin(t * 2) * 1.5, s * 0.36, 'queen', t, { flap: Math.sin(t * 0.7) > 0.6, phase: 1 });
+      // the hive's own queen mother rests in the royal cell
+      drawBeeTop(ctx, p.x, p.y + Math.sin(t * 2) * 1.2, s * 0.62, QUEEN_LOOKS, t, { flap: Math.sin(t * 0.7) > 0.8, phase: 1 });
       return;
     }
 

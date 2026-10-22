@@ -7,6 +7,7 @@ import { GardenScene } from './garden.js';
 import { HiveScene } from './hive.js';
 import { play, unlockAudio, setSoundEnabled } from './audio.js';
 import * as UI from './ui.js';
+import { spritesReady } from './beeart.js';
 
 const canvas = document.getElementById('scene');
 const ctx = canvas.getContext('2d');
@@ -326,8 +327,12 @@ document.body.dataset.scene = 'garden';
 resize();
 UI.updateHUD();
 refreshTools();
-if (boot.fresh) { save(); setTimeout(() => UI.intro(), 400); }
-else if (boot.summary) setTimeout(() => UI.welcomeBack(boot.summary), 400);
+if (boot.fresh) save();
+// show the first card once the bee sprites are in (or after a moment, whichever is first)
+Promise.race([spritesReady, new Promise((r) => setTimeout(r, 2500))]).then(() => setTimeout(() => {
+  if (boot.fresh) UI.intro();
+  else if (boot.summary) UI.welcomeBack(boot.summary);
+}, 300));
 lastWall = Date.now();
 requestAnimationFrame((ts) => { lastFrame = ts; requestAnimationFrame(frame); });
 

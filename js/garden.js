@@ -5,11 +5,12 @@ import {
   CELL_CAPACITY, LAND_TILES, nearHive, COTTAGE_TILE,
 } from './state.js';
 import {
-  A, B, hash, ellipse, drawBee, drawFlowerTile, drawDecor, drawGardenHive,
+  A, B, hash, ellipse, drawFlowerTile, drawDecor, drawGardenHive,
   drawCottage, drawGift, tilePath, drawHeart, shadow,
 } from './art.js';
 import { Fx } from './fx.js';
 import { MAP } from './map.js';
+import { drawBeeTop } from './beeart.js';
 
 const iso = (x, y) => ({ x: (x - y) * A, y: (x + y) * B });
 const MAX_FLYERS = 10;
@@ -102,10 +103,10 @@ export class GardenScene {
     const old = new Map(this.flyers.map((f) => [f.id, f]));
     this.flyers = want.map((b, i) => {
       const f = old.get(b.id);
-      if (f) { f.species = b.species; f.name = b.name; return f; }
+      if (f) { Object.assign(f, { species: b.species, name: b.name, legs: b.legs, wings: b.wings }); return f; }
       const h = this.hivePos();
       return {
-        id: b.id, species: b.species, name: b.name, x: h.x, y: h.y - 14, mode: 'inside',
+        id: b.id, species: b.species, name: b.name, legs: b.legs, wings: b.wings, x: h.x, y: h.y - 14, mode: 'inside', angle: 0,
         until: this.time + 0.4 + i * 0.9, from: null, to: null, phase: hash(i + 1) * 10, flip: false, happy: 0,
       };
     });
@@ -134,9 +135,10 @@ export class GardenScene {
         continue;
       }
       if (f.mode === 'gather') {
+        const px = f.x, py = f.y;
         f.x = f.anchor.x + Math.cos(this.time * 3 + f.phase) * 5;
         f.y = f.anchor.y + Math.sin(this.time * 6 + f.phase) * 2;
-        f.flip = Math.sin(this.time * 3 + f.phase) > 0;
+        this.face(f, f.x - px, f.y - py, dt);
         if (this.time >= f.until) this.launch(f, { x: f.x, y: f.y }, door, 'return');
         continue;
       }
@@ -145,7 +147,7 @@ export class GardenScene {
       const e = f.p < 0.5 ? 2 * f.p * f.p : 1 - Math.pow(-2 * f.p + 2, 2) / 2;
       const nx = f.from.x + (f.to.x - f.from.x) * e;
       const ny = f.from.y + (f.to.y - f.from.y) * e - Math.sin(f.p * Math.PI) * f.arc + Math.sin(this.time * 9 + f.phase) * 1.4;
-      if (Math.abs(nx - f.x) > 0.05) f.flip = nx < f.x;
+      this.face(f, nx - f.x, ny - f.y, dt);
       f.x = nx; f.y = ny;
       if (f.p >= 1) {
         if (f.mode === 'out') {
@@ -155,6 +157,15 @@ export class GardenScene {
         }
       }
     }
+  }
+
+  // turn smoothly toward the direction of travel (sprites face up the screen at angle 0)
+  face(f, dx, dy, dt) {
+    if (Math.abs(dx) + Math.abs(dy) < 0.01) return;
+    const want = Math.atan2(dy, dx) + Math.PI / 2;
+    let d = want - f.angle;
+    d = Math.atan2(Math.sin(d), Math.cos(d));
+    f.angle += d * Math.min(1, dt * 10);
   }
 
   launch(f, from, to, mode) {
@@ -305,8 +316,8 @@ export class GardenScene {
     for (const f of this.flyers) {
       if (f.mode === 'inside') continue;
       shadow(ctx, f.x, f.y + 22, 4, 1.6, 0.1);
-      const s = 5.2 * (1 + f.happy * 0.3);
-      drawBee(ctx, f.x, f.y, s, f.species, t, { flip: f.flip, phase: f.phase });
+      const s = 11 * (1 + f.happy * 0.3);
+      drawBeeTop(ctx, f.x, f.y, s, f, t, { angle: f.angle, flap: true, phase: f.phase });
       if (f.happy > 0) {
         f.happy = Math.max(0, f.happy - 0.012);
         drawHeart(ctx, f.x, f.y - 12 - (1 - f.happy) * 10, 3.5, `rgba(255,120,150,${f.happy})`);
@@ -363,7 +374,9 @@ export class GardenScene {
 
     const hit = this.hitObject(w.x, w.y);
     if (hit && hit.kind === 'gift') return this.tapGift(hit.g);
-    const bee = this.hitFlyer(w.x, w.y);
+    // gifts, ready pollen and the hive win over petting a bee that happens to fly past
+    const busy = hit && (hit.kind === 'hive' || (hit.kind === 'flower' && flowerStatus(hit.tile).ready));
+    const bee = busy ? null : this.hitFlyer(w.x, w.y);
     if (bee) {
       bee.happy = 1;
       this.fx.text(bee.x, bee.y - 16, `${bee.name} 💛`, '#d9577b');

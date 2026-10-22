@@ -3,7 +3,7 @@
 // progressing while the game is closed.
 import {
   SAVE_KEY, HIVE_TILE, HIVE_RINGS, CELL_CAPACITY, MAX_GIFTS, MAX_OFFLINE_SECONDS, MAX_BEES,
-  SPECIES, SPECIES_ORDER, BEE_NAMES, FLOWERS, DECOR, EGGS, xpForLevel, honeyPerCell, cellUnlockCost,
+  SPECIES, SPECIES_ORDER, BEE_NAMES, LEGS, WINGS, RARITY_ORDER, FLOWERS, DECOR, EGGS, xpForLevel, honeyPerCell, cellUnlockCost,
 } from './data.js';
 import { MAP } from './map.js';
 
@@ -91,8 +91,8 @@ export function newGame(now = Date.now()) {
   return s;
 }
 
-function addBee(s, species, name) {
-  const bee = { id: nextId(), species, name: name || pick(BEE_NAMES), born: Date.now() };
+function addBee(s, species, name, parts = rollParts('common')) {
+  const bee = { id: nextId(), species, name: name || pick(BEE_NAMES), born: Date.now(), ...parts };
   s.bees.push(bee);
   s.discovered[species] = (s.discovered[species] || 0) + 1;
   return bee;
@@ -120,6 +120,8 @@ function migrate(s) {
   s.inventory.seeds ||= {}; s.inventory.decor ||= {}; s.inventory.eggs ||= {};
   s.settings ||= { sound: true };
   s.tutorial ||= { hive: true, garden: true };
+  // bees from before legs and wings existed get a set rolled like a meadow egg
+  for (const b of s.bees) if (b.legs == null || b.wings == null) Object.assign(b, rollParts('common'));
   return s;
 }
 
@@ -173,10 +175,18 @@ export function bloomedFlowers(now = Date.now()) {
   return out;
 }
 
+// What one bee brings home: its body's (species') rate, boosted by its legs and wings.
+export function beeNectar(b) {
+  return SPECIES[b.species].nectar * (1 + (LEGS[b.legs]?.nectar || 0) + (WINGS[b.wings]?.nectar || 0));
+}
+export function beePollen(b) {
+  return (SPECIES[b.species].pollen || 0) + (LEGS[b.legs]?.pollen || 0);
+}
+
 const sumTrait = (trait) => state.bees.reduce((acc, b) => acc + (SPECIES[b.species][trait] || 0), 0);
 export const flowerBonus = (now = Date.now()) => Math.min(1.5, bloomedFlowers(now).length * 0.08);
-export const nectarRate = (now = Date.now()) => sumTrait('nectar') * (1 + flowerBonus(now));
-export const pollenBonus = () => Math.min(12, sumTrait('pollen'));
+export const nectarRate = (now = Date.now()) => state.bees.reduce((a, b) => a + beeNectar(b), 0) * (1 + flowerBonus(now));
+export const pollenBonus = () => Math.min(12, state.bees.reduce((a, b) => a + beePollen(b), 0));
 export const giftBonus = () => Math.min(0.5, sumTrait('gift'));
 export const sleepBonus = () => Math.min(0.75, sumTrait('sleep'));
 
@@ -353,13 +363,33 @@ export function openGift(id) {
 
 function bump(obj, k, n) { obj[k] = (obj[k] || 0) + n; if (obj[k] <= 0) delete obj[k]; }
 
-function rollSpecies(kind) {
+function rollRarity(kind) {
   const weights = EGGS[kind].weights;
   const total = Object.values(weights).reduce((a, b) => a + b, 0);
   let roll = Math.random() * total;
-  let rarity = 'common';
-  for (const [k, w] of Object.entries(weights)) { roll -= w; if (roll <= 0) { rarity = k; break; } }
+  for (const [k, w] of Object.entries(weights)) { roll -= w; if (roll <= 0) return k; }
+  return Object.keys(weights)[0];
+}
+
+function rollSpecies(kind) {
+  const rarity = rollRarity(kind);
   return pick(SPECIES_ORDER.filter((s) => SPECIES[s].rarity === rarity));
+}
+
+// pick a random part of a rarity; if there's none of that rarity, take the nearest one below (then above)
+function pickPart(list, rarity) {
+  const want = RARITY_ORDER.indexOf(rarity);
+  const order = [...RARITY_ORDER.slice(0, want + 1).reverse(), ...RARITY_ORDER.slice(want + 1)];
+  for (const r of order) {
+    const ids = list.map((p, i) => (p.rarity === r ? i : -1)).filter((i) => i >= 0);
+    if (ids.length) return pick(ids);
+  }
+  return 0;
+}
+
+// legs and wings are rolled separately with the same odds as the egg's body
+export function rollParts(kind) {
+  return { legs: pickPart(LEGS, rollRarity(kind)), wings: pickPart(WINGS, rollRarity(kind)) };
 }
 
 export function freeNurseryIndex() {
@@ -370,7 +400,7 @@ export function placeEgg(idx, kind, now = Date.now()) {
   const c = state.cells[idx];
   if (!c || c.type !== 'nursery' || c.egg || !state.inventory.eggs[kind]) return false;
   bump(state.inventory.eggs, kind, -1);
-  c.egg = { kind, start: now, dur: EGGS[kind].hatchS * 1000, species: rollSpecies(kind) };
+  c.egg = { kind, start: now, dur: EGGS[kind].hatchS * 1000, species: rollSpecies(kind), ...rollParts(kind) };
   return true;
 }
 
@@ -379,7 +409,8 @@ export function hatch(idx, now = Date.now()) {
   if (!c || !c.egg || !eggStatus(c.egg, now).ready) return { ok: false };
   if (state.bees.length >= MAX_BEES) return { ok: false, reason: 'full' };
   const isNew = !state.discovered[c.egg.species];
-  const bee = addBee(state, c.egg.species);
+  const egg = c.egg;
+  const bee = addBee(state, egg.species, null, egg.legs != null ? { legs: egg.legs, wings: egg.wings } : rollParts(egg.kind));
   c.egg = null;
   state.stats.beesHatched++;
   addXp(10);
