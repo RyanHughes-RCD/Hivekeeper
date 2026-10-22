@@ -1,0 +1,34 @@
+<!doctype html><meta charset="utf-8"><canvas id="c"></canvas>
+<script type="module">
+import { drawBee, drawHoneyDrop, ellipse } from '../js/art.js';
+window.makeIcon = (size, padFrac = 0) => {
+  const c = document.getElementById('c');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  const s = size / 100;
+  const g = ctx.createLinearGradient(0, 0, 0, size);
+  g.addColorStop(0, '#ffe3ef'); g.addColorStop(0.55, '#fff1c9'); g.addColorStop(1, '#ffd27a');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
+  ctx.save();
+  const k = 1 - padFrac * 2;
+  ctx.translate(size / 2, size / 2); ctx.scale(k, k); ctx.translate(-size / 2, -size / 2);
+  // honeycomb backdrop
+  const hex = (x, y, r, fill) => { ctx.beginPath(); for (let i = 0; i < 6; i++) { const a = Math.PI / 3 * i + Math.PI / 6; ctx[i ? 'lineTo' : 'moveTo'](x + r * Math.cos(a), y + r * Math.sin(a)); } ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); };
+  const R = 15 * s;
+  for (let row = -1; row < 5; row++) for (let col = -1; col < 5; col++) {
+    const x = col * R * Math.sqrt(3) + (row % 2 ? R * Math.sqrt(3) / 2 : 0) + 6 * s, y = row * R * 1.5 + 64 * s;
+    hex(x, y, R * 0.9, 'rgba(255,184,28,0.28)');
+  }
+  ellipse(ctx, 50 * s, 82 * s, 30 * s, 6 * s, 'rgba(160,90,20,0.18)');
+  // flowers
+  [[14, 30, '#ff9fb8'], [86, 24, '#b79ae8'], [84, 70, '#8ec9ff']].forEach(([x, y, c]) => {
+    for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; ellipse(ctx, (x + Math.cos(a) * 5) * s, (y + Math.sin(a) * 5) * s, 4.5 * s, 4.5 * s, c); }
+    ellipse(ctx, x * s, y * s, 3.2 * s, 3.2 * s, '#ffe066');
+  });
+  drawHoneyDrop(ctx, 22 * s, 72 * s, 1.4 * s);
+  drawBee(ctx, 49 * s, 50 * s, 22 * s, 'honey', 0.25, { flap: false });
+  ctx.restore();
+  return c.toDataURL('image/png');
+};
+window.ready = true;
+</script>

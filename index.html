@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Little Bee Haven</title>
+  <meta name="description" content="A cosy beekeeping game: grow a pastel cottage garden, harvest honey and collect adorable bees.">
+  <meta name="theme-color" content="#fde2ef">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Bee Haven">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <canvas id="scene" aria-label="Little Bee Haven game"></canvas>
+    <div id="fade"></div>
+
+    <header id="hud">
+      <div class="pill" id="pill-honey"><img id="hud-honey-icon" alt=""><span id="hud-honey">0</span></div>
+      <div class="pill" id="pill-pollen"><img id="hud-pollen-icon" alt=""><span id="hud-pollen">0</span></div>
+      <div class="level" title="Keeper level">
+        <span class="lv">Lv <b id="hud-level">1</b></span>
+        <div class="xp"><i id="hud-xp"></i></div>
+      </div>
+      <button class="icon-btn" id="btn-settings" aria-label="Settings">⚙︎</button>
+    </header>
+
+    <div id="scene-label"></div>
+
+    <div id="scene-tools">
+      <button class="fab" id="btn-collect" hidden>🌼 <span>Collect</span></button>
+      <button class="fab" id="btn-harvest" hidden>🍯 <span>Harvest all</span></button>
+      <button class="fab" id="btn-decorate">✏️ <span>Decorate</span></button>
+    </div>
+
+    <div id="tray" hidden>
+      <div class="tray-top">
+        <div id="tray-actions"></div>
+        <button class="pill-btn done" id="tray-done">Done</button>
+      </div>
+      <div id="tray-items"></div>
+    </div>
+
+    <nav id="tabbar">
+      <button data-nav="garden" class="active"><span class="ico">🌷</span><span>Garden</span><i class="badge" hidden></i></button>
+      <button data-nav="hive"><span class="ico">🍯</span><span>Hive</span><i class="badge" hidden></i></button>
+      <button data-nav="bees"><span class="ico">🐝</span><span>Bees</span></button>
+      <button data-nav="shop"><span class="ico">🛍️</span><span>Shop</span></button>
+    </nav>
+
+    <div id="toasts" aria-live="polite"></div>
+    <div id="modal-root"></div>
+  </div>
+  <noscript><p style="padding:2rem;font-family:system-ui">Little Bee Haven needs JavaScript to run.</p></noscript>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

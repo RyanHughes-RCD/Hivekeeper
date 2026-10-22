@@ -1,0 +1,16 @@
+{
+  "name": "Little Bee Haven",
+  "short_name": "Bee Haven",
+  "description": "A cosy beekeeping game: grow a pastel cottage garden, harvest honey and collect adorable bees.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fde2ef",
+  "theme_color": "#fde2ef",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
