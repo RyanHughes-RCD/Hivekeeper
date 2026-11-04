@@ -63,13 +63,12 @@ h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em; color: 
   position: relative; width: 100%; max-width: 448px; aspect-ratio: 1; margin: 0 auto;
   border: 3px solid var(--ink); border-radius: 2px; overflow: hidden;
   box-shadow: 0 4px 0 0 var(--ink);
-  --sky: #bfe3c4; --floor: #7cbf6a;
-  background: linear-gradient(to bottom, var(--sky) 0 84.375%, var(--floor) 84.375% 100%);
+  background: var(--stage-bg, #e4e2f2);
 }
-.stage[data-bg="meadow"] { --sky: #c9ecd0; --floor: #86c36c; }
-.stage[data-bg="cave"] { --sky: #3a3450; --floor: #262135; }
-.stage[data-bg="sky"] { --sky: #cfe8ff; --floor: #f3f7ff; }
-.stage[data-bg="dusk"] { --sky: #f7c9a8; --floor: #b07a8c; }
+.stage[data-bg="lavender"] { --stage-bg: #e4e2f2; }
+.stage[data-bg="leaf"] { --stage-bg: #b8dc9c; }
+.stage[data-bg="soil"] { --stage-bg: #8a6a52; }
+.stage[data-bg="night"] { --stage-bg: #24203a; }
 .stage[data-bg="lab"] {
   background-color: #ffffff;
   background-image: conic-gradient(#e6e3ec 25%, #ffffff 0 50%, #e6e3ec 0 75%, #ffffff 0);
@@ -84,7 +83,7 @@ h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em; color: 
   background-size: 3.125% 3.125%;
 }
 .stage .dims { position: absolute; right: 6px; bottom: 4px; font-family: var(--mono); font-size: 11px; color: rgba(20,16,30,0.55); }
-.stage[data-bg="cave"] .dims { color: rgba(255,255,255,0.55); }
+.stage[data-bg="night"] .dims, .stage[data-bg="soil"] .dims { color: rgba(255,255,255,0.55); }
 
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
 .row.between { justify-content: space-between; }
@@ -118,7 +117,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 /* Slots */
 .slots { display: flex; flex-direction: column; }
 .slot {
-  display: grid; grid-template-columns: 64px 32px minmax(0, 1fr) 32px 34px; align-items: center; gap: 6px;
+  display: grid; grid-template-columns: 84px 32px minmax(0, 1fr) 32px 34px; align-items: center; gap: 6px;
   padding: 7px 0; border-top: 1px solid var(--line);
 }
 .slot:first-child { border-top: 0; padding-top: 0; }
@@ -180,7 +179,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 <div class="wrap">
   <header class="top">
     <h1>Pixel Menagerie</h1>
-    <p>Each creature is stitched from up to nine tiny sprites, shaded and outlined together into one 32×32 sprite.</p>
+    <p>Cute, creepy little bugs, seen from above. Each is stitched from up to nine tiny sprites into one shaded, outlined 32×32 sprite.</p>
   </header>
 
   <div class="lab">
@@ -196,8 +195,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
             <button class="btn small" id="copyCode" type="button">Copy code</button>
           </div>
         </div>
-        <div class="stage" id="stage" data-bg="meadow">
-          <canvas id="shadow" width="32" height="32" aria-hidden="true"></canvas>
+        <div class="stage" id="stage" data-bg="lavender">
           <canvas id="out" width="32" height="32" role="img" aria-label="Generated creature sprite"></canvas>
           <div class="grid" id="gridOverlay" hidden></div>
           <div class="dims">32×32</div>
@@ -206,7 +204,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
           <div class="chips" id="bgs" role="group" aria-label="Backdrop"></div>
           <div class="row">
             <label class="toggle"><input type="checkbox" id="gridToggle"> Pixel grid</label>
-            <label class="toggle"><input type="checkbox" id="idleToggle" checked> Idle bob</label>
+            <label class="toggle"><input type="checkbox" id="idleToggle" checked> Scuttle</label>
           </div>
         </div>
         <div class="actions">
@@ -217,7 +215,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 
       <section class="card" aria-label="Parts on the bench">
         <h3>Parts on the bench</h3>
-        <p class="note">These are the source sprites, at their real pixel sizes. Paired parts (eyes, ears, arms, legs, wings) are drawn once and mirrored. The stitcher layers them back to front, adds shading from the top left, then traces one outline around the whole silhouette.</p>
+        <p class="note">These are the source sprites, at their real pixel sizes. Paired parts (eyes, antennae, legs, wings) are drawn once as the left half and mirrored. The stitcher layers them back to front, adds shading from the top left, then traces one outline around the whole silhouette.</p>
         <div class="bench" id="bench"></div>
       </section>
     </div>
@@ -272,304 +270,279 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
    k  mouth dark    t  tooth                 r  tongue
    Paired parts are drawn as the creature's LEFT side and mirrored.
 ------------------------------------------------------------------- */
-const BODIES = [
-  { name: "Bean", rows: [
-    "..bbbbbbbb..",
-    ".bbbbbbbbbb.",
-    "bbbbbbbbbbbb",
-    "bbbbaaaabbbb",
-    "bbbaaaaaabbb",
-    "bbbaaaaaabbb",
-    "bbbaaaaaabbb",
-    ".bbbaaaabbb.",
-    "..bbbbbbbb..",
-  ], arm: [1, 3], leg: [3, 7], tail: [10, 5], wing: [3, 1] },
-  { name: "Tall", rows: [
-    "..bbbbbb..",
-    ".bbbbbbbb.",
-    ".bbbaabbb.",
-    "bbbaaaabbb",
-    "bbbaaaabbb",
-    "bbbaaaabbb",
-    "bbbaaaabbb",
-    "bbbaaaabbb",
-    ".bbbaabbb.",
-    "..bbbbbb..",
-  ], arm: [1, 3], leg: [3, 8], tail: [8, 6], wing: [2, 1] },
-  { name: "Chunky", rows: [
-    "...bbbbbbbb...",
-    ".bbbbbbbbbbbb.",
-    "bbbbbbbbbbbbbb",
-    "bbbbbaaaabbbbb",
-    "bbbbaaaaaabbbb",
-    "bbbbaaaaaabbbb",
-    "bbbbaaaaaabbbb",
-    ".bbbbaaaabbbb.",
-    "..bbbbbbbbbb..",
-  ], arm: [1, 3], leg: [4, 7], tail: [12, 5], wing: [3, 1] },
-  { name: "Pear", rows: [
-    "...bbbbbb...",
-    "..bbbbbbbb..",
-    "..bbbaabbb..",
-    ".bbbaaaabbb.",
-    ".bbaaaaaabb.",
-    "bbbaaaaaabbb",
-    "bbbaaaaaabbb",
-    "bbbbaaaabbbb",
-    ".bbbbbbbbbb.",
-  ], arm: [2, 3], leg: [3, 7], tail: [10, 5], wing: [3, 1] },
-  { name: "Segmented", rows: [
-    "...bbbbbb...",
-    "..bbbbbbbb..",
-    "..bbbbbbbb..",
-    "...ssssss...",
-    "..bbbaabbb..",
-    ".bbbaaaabbb.",
-    ".bbbaaaabbb.",
-    ".bbbaaaabbb.",
-    "..bbbaabbb..",
-    "...bbbbbb...",
-  ], arm: [2, 1], leg: [3, 8], tail: [9, 7], wing: [3, 0] },
-  { name: "Blob", rows: [
-    "....bbbbbb....",
-    "..bbbbbbbbbb..",
-    ".bbbbbbbbbbbb.",
-    "bbbbbaaaabbbbb",
-    "bbbbaaaaaabbbb",
-    "bbbbaaaaaabbbb",
-    "bbbbbaaaabbbbb",
-    "bbbbbbbbbbbbbb",
-  ], arm: [1, 3], leg: [4, 6], tail: [12, 4], wing: [4, 1] },
-];
-
+/* Top-down bugs. Every part is centred on the creature's spine,
+   or drawn as its LEFT half and mirrored. */
 const HEADS = [
-  { name: "Round", rows: [
-    "...bbbb...",
-    ".bbbbbbbb.",
-    "bbbbbbbbbb",
-    "bbbbbbbbbb",
-    "bbbbbbbbbb",
-    "bbbbbbbbbb",
-    "bbbbbbbbbb",
-    ".bbbbbbbb.",
-    "..bbbbbb..",
-  ], eye: [3, 1], mouth: 6, ear: [3, 2] },
-  { name: "Boxy", rows: [
-    ".bbbbbbbbbb.",
-    "bbbbbbbbbbbb",
-    "bbbbbbbbbbbb",
-    "bbbbbbbbbbbb",
-    "bbbbbbbbbbbb",
-    "bbbbbbbbbbbb",
-    "bbbbbbbbbbbb",
-    "bbbbbbbbbbbb",
-    ".bbbbbbbbbb.",
-  ], eye: [3, 1], mouth: 6, ear: [4, 1] },
-  { name: "Froggy", rows: [
-    "..bbbb..bbbb..",
-    ".bbbbbbbbbbbb.",
-    "bbbbbbbbbbbbbb",
-    "bbbbbbbbbbbbbb",
-    "bbbbbbbbbbbbbb",
-    ".bbbbbbbbbbbb.",
-    "...bbbbbbbb...",
-  ], eye: [1, 2], mouth: 4, ear: [5, 2] },
-  { name: "Snouty", rows: [
-    "..bbbbbb..",
-    ".bbbbbbbb.",
-    "bbbbbbbbbb",
-    "bbbbbbbbbb",
-    "bbbbbbbbbb",
-    "bbbaaaabbb",
-    ".baaaaaab.",
-    ".baaaaaab.",
-    "..aaaaaa..",
-  ], eye: [3, 1], mouth: 6, ear: [3, 2] },
-  { name: "Dome", rows: [
-    "...bbbb...",
-    "..bbbbbb..",
-    ".bbbbbbbb.",
-    ".bbbbbbbb.",
-    "bbbbbbbbbb",
-    "bbbbbbbbbb",
-    "bbbbbbbbbb",
-    ".bbbbbbbb.",
-    "..bbbbbb..",
-  ], eye: [4, 1], mouth: 7, ear: [2, 3] },
+  { name: "Button", rows: [
+    ".bbbb.",
+    "bbbbbb",
+    "bbbbbb",
+    "bbbbbb",
+    ".bbbb.",
+  ], eye: [1, 0], ant: [1, 0] },
+  { name: "Wide", rows: [
+    ".bbbbbb.",
+    "bbbbbbbb",
+    "bbbbbbbb",
+    ".bbbbbb.",
+  ], eye: [1, 0], ant: [2, 0] },
+  { name: "Bulb", rows: [
+    "..bbbb..",
+    ".bbbbbb.",
+    "bbbbbbbb",
+    "bbbbbbbb",
+    ".bbbbbb.",
+    "..bbbb..",
+  ], eye: [1, 0], ant: [1, 0] },
+  { name: "Slim", rows: [
+    ".bb.",
+    "bbbb",
+    "bbbb",
+    "bbbb",
+    ".bb.",
+  ], eye: [1, 0], ant: [0, 0] },
+  { name: "Wedge", rows: [
+    "bbbbbbbb",
+    "bbbbbbbb",
+    ".bbbbbb.",
+    "..bbbb..",
+    "...bb...",
+  ], eye: [0, 0], ant: [2, 0] },
 ];
 
 const EYES = [
-  { name: "Beady", rows: ["wp", "pp"] },
-  { name: "Big", rows: ["www", "wpp", "wpp"] },
-  { name: "Grumpy", rows: ["k..", "wkk", "wpp"] },
-  { name: "Sleepy", rows: ["kkk", "wpp"], dy: 1 },
-  { name: "Glowing", rows: ["wg", "gg", "gg"] },
-  { name: "Bug", rows: ["gwg", "ggg", "ggg"] },
-  { name: "Cyclops", rows: [".ww.", "wwww", "wppw", "wppw", ".ww."], center: true, dy: -1 },
+  { name: "Dots", rows: [".p"] },
+  { name: "Shiny", rows: ["wp", "pp"] },
+  { name: "Compound", rows: ["wgg", "ggg", ".gg"] },
+  { name: "Glowing", rows: [".e", ".e"] },
+  { name: "Many", rows: ["p.p", ".p."] },
+  { name: "Cyclops", rows: ["ee", "ee"], center: true },
 ];
 
-const MOUTHS = [
+const JAWS = [
   { name: "None", rows: null },
-  { name: "Smile", rows: ["k..k", ".kk."] },
-  { name: "Fangs", rows: ["kkkkkk", ".t..t."] },
-  { name: "Gape", rows: ["kkkk", "krrk", ".kk."] },
-  { name: "Beak", rows: ["hhhh", "hhhh", ".hh."], solid: true, dy: -1 },
-  { name: "Toothy", rows: ["kkkkkk", "kttttk", ".kkkk."] },
-  { name: "Flat", rows: ["kkkk"] },
+  { name: "Mandibles", rows: ["h....h", "hh..hh", ".hhhh."] },
+  { name: "Stag", rows: ["h......h", "hh....hh", ".hh..hh.", "..hhhh.."] },
+  { name: "Fangs", rows: ["k..k", "h..h", "hhhh"] },
+  { name: "Proboscis", rows: ["kk", "kk", "kk"], flat: true },
 ];
 
-const EARS = [
+const ANTENNAE = [
   { name: "None", rows: null },
-  { name: "Cat", rows: ["b...", "bb..", "bab.", "baab", "bbbb"], anchor: [2, 4] },
-  { name: "Horns", rows: ["h...", "hh..", ".hh.", "..hh", "..hh"], anchor: [3, 4] },
-  { name: "Antennae", rows: ["aa..", "aa..", "..b.", "..b.", "...b"], anchor: [3, 4] },
-  { name: "Bunny", rows: [".bb", "bab", "bab", "bab", "bab", ".bb"], anchor: [2, 5] },
-  { name: "Floppy", rows: ["..bb", ".bbb", "bbab", "bab.", "bb.."], anchor: [3, 1], front: true, ox: 2 },
-  { name: "Fins", rows: ["a..", "aa.", "aaa", "aaa", "aaa"], anchor: [2, 4] },
+  { name: "Straight", rows: ["k..", "k..", ".k.", "..k"], anchor: [2, 3] },
+  { name: "Clubbed", rows: ["aa..", "aa..", "..k.", "...k"], anchor: [3, 3] },
+  { name: "Elbowed", rows: ["kk..", "..k.", "..k.", "...k"], anchor: [3, 3] },
+  { name: "Feathery", rows: ["k.k.", "kkk.", ".kkk", "..kk"], anchor: [3, 3] },
+  { name: "Whip", rows: ["kk...", "k....", ".k...", "..k..", "...kk"], anchor: [4, 4] },
 ];
 
-const ARMS = [
-  { name: "None", rows: null },
-  { name: "Stubby", rows: [".bb", "bbb", "bbb", "bb."], anchor: [2, 0] },
-  { name: "Clawed", rows: ["..bb", ".bbb", "bbb.", "bb..", "h.h."], anchor: [3, 0] },
-  { name: "Pincers", rows: ["...bb", "..bb.", "aaa..", "a....", "aaa.."], anchor: [4, 0] },
-  { name: "Tentacle", rows: ["..bb", ".bb.", ".b..", ".bb.", "..b.", ".bb."], anchor: [3, 0] },
-  { name: "Raised", rows: ["bb.", "bb.", ".b.", ".bb", "..b"], anchor: [2, 4] },
+const THORAXES = [
+  { name: "Round", rows: [".bbbb.", "bbbbbb", "bbbbbb", "bbbbbb", ".bbbb."], leg: [0, 2], wing: [1, 1] },
+  { name: "Shield", rows: [".bbbbbbbb.", "bbbbbbbbbb", "bbbbbbbbbb", ".bbbbbbbb."], leg: [1, 2], wing: [2, 1] },
+  { name: "Slim", rows: [".bb.", "bbbb", "bbbb", "bbbb", ".bb."], leg: [0, 2], wing: [0, 1] },
+  { name: "Hump", rows: ["..bbbb..", ".bbbbbb.", "bbbbbbbb", "bbbbbbbb", ".bbbbbb."], leg: [0, 3], wing: [1, 1] },
+  { name: "Spiked", rows: [".hbbbbh.", "hbbbbbbh", "bbbbbbbb", "bbbbbbbb", ".bbbbbb."], leg: [0, 2], wing: [1, 1] },
 ];
 
+const ABDOMENS = [
+  { name: "Dome", rows: [
+    ".bbbbssbbbb.",
+    "bbbbbssbbbbb",
+    "bbbbbssbbbbb",
+    "bbbbbssbbbbb",
+    "bbbbbssbbbbb",
+    "bbbbbssbbbbb",
+    ".bbbbssbbbb.",
+    "..bbbssbbb..",
+    "....bbbb....",
+  ] },
+  { name: "Banded", rows: [
+    "..bbbb..",
+    ".bbbbbb.",
+    ".aaaaaa.",
+    "bbbbbbbb",
+    "aaaaaaaa",
+    "bbbbbbbb",
+    ".aaaaaa.",
+    ".bbbbbb.",
+    "..aaaa..",
+    "...bb...",
+  ] },
+  { name: "Widow", rows: [
+    "...bbbb...",
+    ".bbbbbbbb.",
+    ".bbbaabbb.",
+    "bbbbaabbbb",
+    "bbbbbbbbbb",
+    "bbbbaabbbb",
+    ".bbbaabbb.",
+    ".bbbbbbbb.",
+    "...bbbb...",
+  ] },
+  { name: "Grub", rows: [
+    ".bbbb.", "bbaabb", ".bbbb.",
+    ".bbbb.", "bbaabb", ".bbbb.",
+    ".bbbb.", "bbaabb", ".bbbb.",
+    ".bbbb.", "bbaabb", ".bbbb.",
+  ] },
+  { name: "Needle", rows: [
+    ".bb.", "bbbb", "bbbb", ".bb.", ".bb.", ".aa.",
+    ".bb.", ".aa.", ".bb.", ".aa.", ".bb.", ".bb.",
+  ] },
+  { name: "Teardrop", rows: [
+    ".bbbbbb.",
+    "bbbbbbbb",
+    "bbbbbbbb",
+    "bbbbbbbb",
+    ".bbbbbb.",
+    ".bbbbbb.",
+    "..bbbb..",
+    "...bb...",
+  ] },
+];
+
+// Left legs only; anchor lands on the thorax's leg point.
 const LEGS = [
   { name: "None", rows: null },
-  { name: "Stumpy", rows: [".bbb", ".bbb", "bbbb"], anchor: [2, 0] },
-  { name: "Long", rows: [".bb", ".bb", ".bb", ".bb", "bbb"], anchor: [1, 0] },
-  { name: "Talons", rows: [".bb.", ".bb.", ".bh.", "h.hh"], anchor: [1, 0] },
-  { name: "Spindly", rows: ["..bbb", ".bb..", "bb...", "b...."], anchor: [4, 0] },
-  { name: "Hooves", rows: ["bbb", "bbb", ".bb", "hhh"], anchor: [1, 0] },
-];
-
-const TAILS = [
-  { name: "None", rows: null },
-  { name: "Curl", rows: ["..bbb.", ".bb.bb", ".b..bb", "bb.bb.", "bbb..."], anchor: [0, 4] },
-  { name: "Spiked", rows: ["....hh", "...bh.", "..bb..", "bbb...", "bb...."], anchor: [0, 4] },
-  { name: "Fluffy", rows: [".aaa.", "aaaaa", "aaaaa", ".bba.", "bb..."], anchor: [0, 4] },
-  { name: "Stinger", rows: ["...h.", "..hh.", "..bb.", "...bb", "..bb.", "bbb.."], anchor: [0, 5] },
-  { name: "Fin", rows: ["...a", "..aa", ".aaa", "bbaa", "bb.a"], anchor: [0, 3] },
+  { name: "Six", rows: ["k....", ".k...", "..kkk", ".....", "kkkkk", ".....", "..kkk", ".k...", "k...."], anchor: [4, 4] },
+  { name: "Eight", rows: ["kk....", "..k...", "...kkk", "kk....", "..kkkk", "......", "..kkkk", "kk....", "...kkk", "..k...", "kk...."], anchor: [5, 5] },
+  { name: "Stilts", rows: ["k.....", "k.....", ".k....", "..kkkk", "......", "kkkkkk", "......", "..kkkk", ".k....", "k.....", "k....."], anchor: [5, 5] },
+  { name: "Hooked", rows: ["kk...", ".k...", "..kkk", "k....", ".kkkk", "k....", "..kkk", ".k...", "kk..."], anchor: [4, 4] },
+  { name: "Nubs", rows: ["kk.", ".kk", "...", "kkk", "...", ".kk", "kk."], anchor: [2, 3] },
 ];
 
 const WINGS = [
   { name: "None", rows: null },
-  { name: "Bat", rows: [".....hh", "...hhah", ".hhaaah", "haaaaah", "haaaaah", ".a.a.ah"], anchor: [6, 1] },
-  { name: "Feathered", rows: [".....a", "...aaa", ".aaaaa", "aaaaaa", "aaaaa.", "aaaa..", ".aa..."], anchor: [5, 1] },
-  { name: "Insect", rows: [".aaa.", "aaaaa", "aaaaa", "aaaaa", ".aaaa", "..aaa", "...aa"], anchor: [4, 2] },
-  { name: "Stubs", rows: ["..aa", ".aaa", "aaaa", "aa.."], anchor: [3, 1] },
+  { name: "Butterfly", rows: [
+    ".aaaa....",
+    "aaaaaaa..",
+    "aagaaaaa.",
+    "aaaaaaaaa",
+    ".aaaaaaaa",
+    "...aaaaaa",
+    "..aaaaaaa",
+    ".aagaaaa.",
+    ".aaaaaa..",
+    "..aaa....",
+  ], anchor: [8, 2] },
+  { name: "Glassy", rows: [".ccccc.", "ccccccc", "cccccc.", ".ccccc.", "..ccc.."], anchor: [6, 0] },
+  { name: "Dragonfly", rows: ["cccccccc..", ".ccccccccc", "..........", "cccccccc..", ".ccccccccc"], anchor: [9, 1] },
+  { name: "Shell", rows: ["...bb", "..bbb", ".bbbb", ".bbbb", "bbbb.", "bbbb.", "bbb..", "bb..."], anchor: [4, 0] },
+  { name: "Moth", rows: ["..aaaaaa", ".aaaaaaa", "aaagaaaa", "aaaaaaaa", ".aaaaaaa", "...aaaaa", ".....aaa"], anchor: [7, 1] },
+  { name: "Tattered", rows: ["..aaaaa", ".aaaaaa", "aaaaaaa", "a.aa.aa", "...a..a"], anchor: [6, 0] },
+];
+
+const TAILS = [
+  { name: "None", rows: null },
+  { name: "Stinger", rows: ["kk", "kk", "k."] },
+  { name: "Cerci", rows: [".k..k.", "k....k"] },
+  { name: "Spinnerets", rows: [".hh.", "h..h"] },
+  { name: "Lantern", rows: [".yy.", "yyyy", ".yy."], dy: -2 },
 ];
 
 const PALETTES = [
-  { name: "Moss",  skin: ["#a6e07a", "#62b04c", "#3b7a3a"], accent: ["#f8eab0", "#e3c46c", "#b38c40"], bone: ["#fff6e0", "#e8d4a8", "#b49870"], outline: "#1c2a1c", iris: "#ff5a5a" },
-  { name: "Ember", skin: ["#ffa877", "#e2583c", "#a5302d"], accent: ["#ffe596", "#f6b63e", "#c57a22"], bone: ["#fff3e2", "#e7cfb0", "#a98f6d"], outline: "#2b1215", iris: "#ffe14d" },
-  { name: "Tide",  skin: ["#97d8ff", "#4b95e0", "#2e5bad"], accent: ["#eafcff", "#b6e8f1", "#76b6cb"], bone: ["#ffffff", "#d7e3ee", "#97a8ba"], outline: "#131c34", iris: "#ffd23f" },
-  { name: "Plum",  skin: ["#dcaeff", "#9b5bd7", "#62389c"], accent: ["#ffcde9", "#f08cc0", "#bd558d"], bone: ["#fff5f0", "#ead6cc", "#b29b93"], outline: "#1f1331", iris: "#7dffb0" },
-  { name: "Slate", skin: ["#c3bfd2", "#837e9b", "#56516b"], accent: ["#f4b0ad", "#d36a79", "#984157"], bone: ["#fffbe6", "#e2d8b2", "#aa9e76"], outline: "#17151f", iris: "#ff4d6d" },
-  { name: "Sand",  skin: ["#f6d9a2", "#d5a35a", "#9b6c33"], accent: ["#fff5dc", "#f1ddb2", "#c9ad7f"], bone: ["#ffffff", "#ddd7cd", "#a39a8e"], outline: "#2a1c0f", iris: "#3fb6ff" },
-  { name: "Frost", skin: ["#ffffff", "#ccd7ef", "#8d9dc6"], accent: ["#a8eaff", "#5fbde8", "#3982b6"], bone: ["#ffffff", "#e6e6f0", "#a8a8bd"], outline: "#1a1f34", iris: "#ff8a3d" },
-  { name: "Toxic", skin: ["#ecf68a", "#b8d03a", "#7a931f"], accent: ["#a479df", "#6c45a9", "#46307a"], bone: ["#faffef", "#dfe8c8", "#a2ac88"], outline: "#191e0b", iris: "#ff3df2" },
+  { name: "Ladybird", skin: ["#ff7a6a", "#e02a2a", "#9a1420"], accent: ["#4a4458", "#26222e", "#141018"], bone: ["#f5efe6", "#cfc3b2", "#8a7c6a"], outline: "#130b10", iris: "#9be0ff" },
+  { name: "Jewel",    skin: ["#7ef0a8", "#20b46e", "#0c6b4c"], accent: ["#fff0a0", "#f2c53d", "#b5821f"], bone: ["#f0e6d0", "#b8a27c", "#6e5a3e"], outline: "#0b1f1a", iris: "#ff4a4a" },
+  { name: "Ember",    skin: ["#ff9a5a", "#c8401e", "#7a1e14"], accent: ["#3a2a2a", "#1e1414", "#100a0a"], bone: ["#f2d8b0", "#b98c5a", "#6e4a28"], outline: "#1c0a08", iris: "#ffb000" },
+  { name: "Wasp",     skin: ["#fff27a", "#f2c21a", "#b8820f"], accent: ["#5a5050", "#2c2626", "#151212"], bone: ["#ffffff", "#d0cac0", "#8f887c"], outline: "#1a1408", iris: "#ff3b3b" },
+  { name: "Orchid",   skin: ["#f7a8d8", "#d0509a", "#8a2a68"], accent: ["#ffd0ea", "#ee80c0", "#a83c80"], bone: ["#fff1f6", "#e8c0d4", "#a87890"], outline: "#2a0c20", iris: "#3fd6ff" },
+  { name: "Night",    skin: ["#6a6a8a", "#3a3a56", "#22223a"], accent: ["#7affd8", "#25c8a0", "#127a64"], bone: ["#e6e6f0", "#a8a8bd", "#6a6a80"], outline: "#0a0a14", iris: "#e8ff5a" },
+  { name: "Teal",     skin: ["#7ae8d8", "#1fa69a", "#0e5e60"], accent: ["#c8f8ff", "#62cfe8", "#2a86a8"], bone: ["#f0fff8", "#b8dccc", "#6e9a8a"], outline: "#071a1c", iris: "#ff5a8a" },
+  { name: "Bark",     skin: ["#c4865a", "#8a4f2e", "#55301f"], accent: ["#e8b88a", "#c08a5c", "#8a5a38"], bone: ["#f2e6c8", "#c8b088", "#7e6440"], outline: "#1c0f0a", iris: "#ffd23f" },
 ];
 
 const MARKS = ["None", "Spots", "Stripes"];
-const BACKDROPS = [["meadow", "Meadow"], ["cave", "Cave"], ["sky", "Sky"], ["dusk", "Dusk"], ["lab", "Clear"]];
+const BACKDROPS = [["lavender", "Lavender"], ["leaf", "Leaf"], ["soil", "Soil"], ["night", "Night"], ["lab", "Clear"]];
 
 const SLOTS = [
-  { key: "body", label: "Body", list: BODIES },
   { key: "head", label: "Head", list: HEADS },
-  { key: "eyes", label: "Eyes", list: EYES },
-  { key: "mouth", label: "Mouth", list: MOUTHS },
-  { key: "ears", label: "Top", list: EARS },
-  { key: "arms", label: "Arms", list: ARMS },
-  { key: "legs", label: "Legs", list: LEGS },
+  { key: "eyes", label: "Eyes", list: EYES, flat: true },
+  { key: "jaws", label: "Jaws", list: JAWS },
+  { key: "antennae", label: "Antennae", list: ANTENNAE, pair: true },
+  { key: "thorax", label: "Thorax", list: THORAXES },
+  { key: "abdomen", label: "Abdomen", list: ABDOMENS },
+  { key: "legs", label: "Legs", list: LEGS, pair: true },
+  { key: "wings", label: "Wings", list: WINGS, pair: true },
   { key: "tail", label: "Tail", list: TAILS },
-  { key: "wings", label: "Wings", list: WINGS },
 ];
 
 /* ------------------------------------------------------------------
    Stitcher
 ------------------------------------------------------------------- */
-const W = 64, C = 32, OUT = 32, GROUND = 30;
-const FIXED = { w: "#fbfbff", p: "#15121e", t: "#ffffff", r: "#ff6f91" };
+const W = 64, C = 32, OUT = 32;
+const FIXED = { w: "#fbfbff", p: "#15121e", e: "#ff3046" };
+const CLEAR = ["#f4fbff", "#d2e8f6", "#a6c4dc"];   // glassy wings
+const GLOW = ["#fdffc8", "#f0f55a", "#b8c42a"];    // lantern
 
 function layer(name, opts) { return Object.assign({ name, px: new Map(), shade: true, outline: true, mark: false }, opts || {}); }
 function put(L, x, y, ch, lx, ly) {
   if (x < 0 || y < 0 || x >= W || y >= W) return;
   L.px.set(y * W + x, { ch, lx, ly });
 }
-function stamp(L, rows, x, y, mirror) {
+function stamp(L, rows, x, y, mirror, mdy = 0) {
   for (let r = 0; r < rows.length; r++) {
     const row = rows[r];
     for (let c = 0; c < row.length; c++) {
       const ch = row[c];
       if (ch === ".") continue;
       put(L, x + c, y + r, ch, c, r);
-      if (mirror) put(L, 2 * C - 1 - (x + c), y + r, ch, row.length - 1 - c, r);
+      if (mirror) put(L, 2 * C - 1 - (x + c), y + r + mdy, ch, row.length - 1 - c, r);
     }
   }
 }
 const wOf = s => s.rows[0].length, hOf = s => s.rows.length;
 
 function buildLayers(sel, frame) {
-  const body = BODIES[sel.body], head = HEADS[sel.head], eyes = EYES[sel.eyes], mouth = MOUTHS[sel.mouth];
-  const ears = EARS[sel.ears], arms = ARMS[sel.arms], legs = LEGS[sel.legs], tail = TAILS[sel.tail], wings = WINGS[sel.wings];
-  const bob = frame ? 1 : 0;
-  const bw = wOf(body);
-  const BX = C - bw / 2, BY0 = 12, BY = BY0 + bob;
-  const hw = wOf(head), hh = hOf(head);
-  const HX = C - hw / 2, HY = BY + 2 - hh;
+  const head = HEADS[sel.head], eyes = EYES[sel.eyes], jaws = JAWS[sel.jaws], ant = ANTENNAE[sel.antennae];
+  const thx = THORAXES[sel.thorax], abd = ABDOMENS[sel.abdomen], legs = LEGS[sel.legs], wings = WINGS[sel.wings], tail = TAILS[sel.tail];
+  const f = frame ? 1 : 0;
+  const TX = C - wOf(thx) / 2, TY = 24;
+  const HX = C - wOf(head) / 2, HY = TY - hOf(head) + 1;
+  const AX = C - wOf(abd) / 2, AY = TY + hOf(thx) - 1;
   const out = [];
 
+  // Legs scuttle: on the second frame the left legs step down and the right legs step up.
+  if (legs.rows) {
+    const L = layer("legs", { shade: false, outline: false });
+    stamp(L, legs.rows, TX + thx.leg[0] - legs.anchor[0], TY + thx.leg[1] - legs.anchor[1] + f, true, -2 * f);
+    out.push(L);
+  }
+  if (ant.rows) {
+    const L = layer("antennae");
+    stamp(L, ant.rows, C - 1 - head.ant[0] - ant.anchor[0], HY + head.ant[1] - ant.anchor[1] + f, true, -f);
+    out.push(L);
+  }
+  // Wings flutter one pixel outward.
   if (wings.rows) {
     const L = layer("wings");
-    stamp(L, wings.rows, BX + body.wing[0] - wings.anchor[0], BY0 + body.wing[1] - wings.anchor[1], true);
+    stamp(L, wings.rows, TX + thx.wing[0] - wings.anchor[0] - f, TY + thx.wing[1] - wings.anchor[1], true);
     out.push(L);
   }
+  { const L = layer("abdomen", { mark: true }); stamp(L, abd.rows, AX, AY, false); out.push(L); }
   if (tail.rows) {
-    const L = layer("tail", { mark: true });
-    stamp(L, tail.rows, BX + body.tail[0] - tail.anchor[0], BY + body.tail[1] - tail.anchor[1], false);
+    const L = layer("tail");
+    stamp(L, tail.rows, C - wOf(tail) / 2, AY + hOf(abd) + (tail.dy || 0), false);
     out.push(L);
   }
-  let earLayer = null;
-  if (ears.rows) {
-    earLayer = layer("ears");
-    const ax = C - 1 - head.ear[0] - (ears.ox || 0);
-    stamp(earLayer, ears.rows, ax - ears.anchor[0], HY + head.ear[1] - ears.anchor[1], true);
-    if (!ears.front) out.push(earLayer);
-  }
-  if (legs.rows) {
-    const L = layer("legs");
-    stamp(L, legs.rows, BX + body.leg[0] - legs.anchor[0], BY0 + body.leg[1] - legs.anchor[1], true);
-    out.push(L);
-  }
-  { const L = layer("body", { mark: true }); stamp(L, body.rows, BX, BY, false); out.push(L); }
-  if (arms.rows) {
-    const L = layer("arms");
-    stamp(L, arms.rows, BX + body.arm[0] - arms.anchor[0], BY + body.arm[1] - arms.anchor[1], true);
+  { const L = layer("thorax"); stamp(L, thx.rows, TX, TY, false); out.push(L); }
+  if (jaws.rows) {
+    const L = layer("jaws", { shade: !jaws.flat, outline: !jaws.flat });
+    stamp(L, jaws.rows, C - wOf(jaws) / 2, HY - hOf(jaws) + 1, false);
     out.push(L);
   }
   { const L = layer("head"); stamp(L, head.rows, HX, HY, false); out.push(L); }
-  if (earLayer && ears.front) out.push(earLayer);
   {
     const L = layer("eyes", { shade: false, outline: false });
-    const ey = HY + head.eye[0] + (eyes.dy || 0);
+    const ey = HY + head.eye[0];
     if (eyes.center) stamp(L, eyes.rows, C - wOf(eyes) / 2, ey, false);
-    else stamp(L, eyes.rows, C - head.eye[1] - wOf(eyes), ey, true);
-    out.push(L);
-  }
-  if (mouth.rows) {
-    const L = layer("mouth", { shade: !!mouth.solid, outline: !!mouth.solid });
-    stamp(L, mouth.rows, C - wOf(mouth) / 2, HY + head.mouth + (mouth.dy || 0), false);
+    else stamp(L, eyes.rows, HX + head.eye[1], ey, true);
     out.push(L);
   }
   return out;
 }
 
 function markAt(mark, lx, ly) {
-  if (mark === 1) return ly % 3 === 1 && (lx + ly) % 4 === 0;
+  if (mark === 1) { const band = Math.floor(ly / 3); return ly % 3 !== 0 && ((lx + band * 3) % 6 === 1 || (lx + band * 3) % 6 === 2); }
   if (mark === 2) return ly % 3 === 2;
   return false;
 }
@@ -583,6 +556,8 @@ function colorFor(ch, tone, pal) {
     case "l": return pal.skin[0];
     case "g": return pal.iris;
     case "k": return pal.outline;
+    case "c": return CLEAR[tone];
+    case "y": return GLOW[tone];
     default: return FIXED[ch] || "#ff00ff";
   }
 }
@@ -592,7 +567,7 @@ function paintLayer(grid, L, pal, mark) {
   const colors = [];
   for (const [i, p] of L.px) {
     let tone = 1;
-    if (L.shade && "bah".includes(p.ch)) {
+    if (L.shade && "bahcy".includes(p.ch)) {
       const x = i % W;
       const dn = !has(i + W), rt = x + 1 >= W || !has(i + 1);
       const up = !has(i - W), lf = x === 0 || !has(i - 1);
@@ -600,7 +575,7 @@ function paintLayer(grid, L, pal, mark) {
     }
     let ch = p.ch;
     if (L.mark && ch === "b" && tone === 1 && markAt(mark, p.lx, p.ly)) ch = "a";
-    colors.push([i, colorFor(ch, tone, pal)]);
+    colors.push([i, colorFor(ch, tone, pal), ch === "k"]);
   }
   // Inner outline: where this part sits on top of an earlier part, trace a seam.
   if (L.outline) {
@@ -612,7 +587,7 @@ function paintLayer(grid, L, pal, mark) {
       for (const n of ns) if (n >= 0 && n < W * W && !has(n) && grid[n] && !grid[n].o) grid[n] = { c: pal.outline, o: 1 };
     }
   }
-  for (const [i, c] of colors) grid[i] = { c, o: 0 };
+  for (const [i, c, line] of colors) grid[i] = { c, o: line ? 1 : 0 };
 }
 
 function outerOutline(grid, col) {
@@ -650,7 +625,7 @@ function compose(sel) {
   const g0 = composeGrid(sel, 0), g1 = composeGrid(sel, 1);
   const b = bbox(g0);
   const ox = Math.floor((OUT - b.w) / 2) - b.x0;
-  const oy = b.h <= GROUND + 1 ? GROUND - b.y1 : -b.y0;
+  const oy = Math.floor((OUT - b.h) / 2) - b.y0;
   const crop = g => {
     const px = new Array(OUT * OUT).fill(null);
     for (let i = 0; i < W * W; i++) if (g[i]) {
@@ -696,7 +671,7 @@ const KEYS = [...SLOTS.map(s => s.key), "pal", "mark"];
 const LISTS = [...SLOTS.map(s => s.list), PALETTES, MARKS];
 let sel = { body: 0, head: 0, eyes: 1, mouth: 1, ears: 1, arms: 1, legs: 1, tail: 0, wings: 0, pal: 0, mark: 0 };
 const locks = {};
-let bg = "meadow", frame = 0, current = null, recent = [];
+let bg = "lavender", frame = 0, current = null, recent = [];
 
 const toCode = s => KEYS.map(k => s[k].toString(36)).join("").toUpperCase();
 function fromCode(code) {
@@ -711,9 +686,9 @@ function fromCode(code) {
   return s;
 }
 function hash(str) { let h = 2166136261; for (const ch of str) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
-const PRE = ["Glo", "Mur", "Skree", "Bram", "Zib", "Tok", "Fen", "Quil", "Puff", "Grub", "Nim", "Vex", "Bo", "Krell", "Sprock", "Lum", "Wib", "Dros"];
-const MID = ["", "", "a", "o", "i", "ble", "za", "ri", "mo"];
-const SUF = ["p", "x", "ok", "ling", "mander", "pup", "wick", "bit", "moth", "gor", "doo", "fin", "sprout", "bug"];
+const PRE = ["Skit", "Chit", "Klik", "Mand", "Thrax", "Vesp", "Scar", "Lum", "Bzz", "Krik", "Zor", "Mott", "Gnat", "Dun", "Cara", "Wev", "Ish", "Tarr"];
+const MID = ["", "", "a", "o", "i", "ri", "za", "ne"];
+const SUF = ["ix", "ra", "pod", "bug", "wing", "mite", "ler", "ant", "bus", "dra", "cid", "thrax", "fly", "nid"];
 function nameFor(code) {
   const h = hash(code);
   return PRE[h % PRE.length] + MID[(h >>> 5) % MID.length] + SUF[(h >>> 11) % SUF.length];
@@ -784,17 +759,6 @@ function applyBg() {
   try { localStorage.setItem("pm-bg", bg); } catch (e) {}
 }
 
-function drawShadow(box) {
-  const cv = $("shadow");
-  const ctx = cv.getContext("2d");
-  ctx.clearRect(0, 0, OUT, OUT);
-  if (bg === "lab") return;
-  ctx.fillStyle = "rgba(20, 14, 30, 0.22)";
-  const y = Math.min(OUT - 1, box.y1 + 1);
-  const x0 = box.x0 + 2, x1 = box.x1 - 2;
-  if (x1 > x0) { ctx.fillRect(x0, y, x1 - x0 + 1, 1); ctx.fillRect(x0 + 2, Math.min(OUT - 1, y + 1), Math.max(1, x1 - x0 - 3), 1); }
-}
-
 function updatePng() {
   const big = $("bigToggle").checked;
   const scale = big ? 8 : 1;
@@ -811,12 +775,11 @@ function renderBench() {
   const pal = PALETTES[sel.pal];
   const bench = $("bench");
   bench.innerHTML = "";
-  const order = ["head", "body", "eyes", "mouth", "ears", "arms", "legs", "tail", "wings"];
-  for (const key of order) {
-    const slot = SLOTS.find(s => s.key === key);
+  for (const slot of SLOTS) {
+    const key = slot.key;
     const part = slot.list[sel[key]];
     if (!part.rows) continue;
-    const solid = !(key === "eyes" || (key === "mouth" && !part.solid));
+    const solid = !(slot.flat || part.flat);
     const sp = soloSprite(part.rows, pal, solid);
     const card = document.createElement("div");
     card.className = "part";
@@ -824,7 +787,7 @@ function renderBench() {
     drawPx(cv, sp.px, sp.w, sp.h);
     const scale = Math.max(2, Math.min(6, Math.floor(72 / Math.max(sp.w, sp.h))));
     cv.style.width = sp.w * scale + "px"; cv.style.height = sp.h * scale + "px";
-    const pair = ["eyes", "ears", "arms", "legs", "wings"].includes(key) && !part.center;
+    const pair = (slot.pair || key === "eyes") && !part.center;
     card.innerHTML = `<div class="pc"></div><b>${slot.label}</b><small>${wOf(part)}×${hOf(part)}${pair ? " ×2" : ""}</small>`;
     card.querySelector(".pc").appendChild(cv);
     card.title = part.name;
@@ -839,7 +802,7 @@ function renderSlots() {
     const val = s.el.querySelector(".val");
     const cv = val.querySelector("canvas");
     if (part.rows) {
-      const solid = !(s.key === "eyes" || (s.key === "mouth" && !part.solid));
+      const solid = !(s.flat || part.flat);
       const sp = soloSprite(part.rows, pal, solid);
       drawPx(cv, sp.px, sp.w, sp.h);
       cv.style.width = "28px"; cv.style.height = "28px"; cv.style.objectFit = "contain";
@@ -864,7 +827,6 @@ function render(record) {
   current = compose(sel);
   frame = 0;
   paintFrame();
-  drawShadow(current.box);
   const code = toCode(sel);
   $("code").textContent = code;
   $("name").textContent = nameFor(code);
@@ -907,12 +869,11 @@ function randomize() {
     if (locks[s.key]) continue;
     let v = rnd(s.list.length);
     // Keep "None" from showing up too often on optional slots.
-    if (s.list[v].name === "None" && s.key !== "wings" && s.key !== "tail" && Math.random() < 0.6) v = 1 + rnd(s.list.length - 1);
-    if (s.key === "wings" && v !== 0 && Math.random() < 0.4) v = 0;
+    if (s.list[v].name === "None" && s.key !== "wings" && s.key !== "tail" && s.key !== "jaws" && Math.random() < 0.7) v = 1 + rnd(s.list.length - 1);
     sel[s.key] = v;
   }
   if (!locks.pal) sel.pal = rnd(PALETTES.length);
-  if (Math.random() < 0.5) sel.mark = rnd(MARKS.length);
+  sel.mark = Math.random() < 0.55 ? 0 : 1 + rnd(MARKS.length - 1);
   render(true);
 }
 function mutate() {
@@ -971,15 +932,25 @@ function start(data) {
   buildPalettes();
   wire();
   try { bg = localStorage.getItem("pm-bg") || bg; } catch (e) {}
-  if (!BACKDROPS.some(b => b[0] === bg)) bg = "meadow";
+  if (!BACKDROPS.some(b => b[0] === bg)) bg = "lavender";
   applyBg();
   const fromHash = fromCode(location.hash.slice(1));
   if (data && data.sel) { sel = data.sel; recent = data.recent || []; }
   else if (fromHash) sel = fromHash;
   else {
     // A few hand-picked examples so the page opens with a gallery.
-    recent = ["3011120000", "1243424120", "0465313304", "2425250312", "4352041142"].map(c => c + "0").filter(fromCode);
-    sel = { body: 2, head: 3, eyes: 1, mouth: 2, ears: 2, arms: 2, legs: 1, tail: 2, wings: 1, pal: 4, mark: 0 };
+    // Hand-picked examples so the page opens with a gallery.
+    const ex = (head, eyes, jaws, antennae, thorax, abdomen, legs, wings, tail, pal, mark) =>
+      ({ head, eyes, jaws, antennae, thorax, abdomen, legs, wings, tail, pal, mark });
+    recent = [
+      ex(0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1),  // ladybird
+      ex(2, 2, 0, 1, 2, 4, 1, 3, 0, 6, 0),  // dragonfly
+      ex(0, 1, 1, 3, 2, 1, 1, 2, 1, 3, 0),  // wasp
+      ex(3, 0, 1, 3, 2, 3, 5, 0, 0, 1, 0),  // grub
+      ex(0, 4, 3, 0, 0, 2, 2, 0, 3, 5, 0),  // spider
+      ex(1, 1, 1, 2, 4, 0, 4, 4, 0, 7, 0),  // beetle
+    ].map(toCode);
+    sel = ex(2, 1, 0, 2, 0, 5, 1, 1, 0, 4, 0);  // butterfly
   }
   render(true);
   window.claude?.hot?.snapshot?.(() => ({ sel, recent }));
