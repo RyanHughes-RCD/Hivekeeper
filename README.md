@@ -31,3 +31,17 @@ To add a part, append an entry to the matching list (`HEADS`, `EYES`, `JAWS`, `A
 ## Creature codes
 
 Each bug has a 13-character code: one base-36 digit per slot, then the palette and markings. Open `index.html#CODE` to load one.
+
+## Randomize odds
+
+Randomize is stingy with extra parts. The odds live in `PAIR_ODDS` and `HAVE_ODDS` in `index.html`:
+
+| Roll | Odds |
+|---|---|
+| Legs / wings | legs only 66%, wings only 24%, both 5%, neither 5% |
+| Jaws / antennae | jaws only 45%, antennae only 45%, both 6%, neither 4% |
+| Spines | 22% |
+| Tail | 40% |
+| Magic | 7% (Sigils markings 3%) |
+
+Locked parts are respected: the pair outcome is re-rolled until it agrees with whatever is locked.

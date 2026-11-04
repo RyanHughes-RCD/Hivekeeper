@@ -1051,17 +1051,45 @@ function renderHistory() {
   }
 }
 
-function randomize() {
-  for (const s of SLOTS) {
-    if (locks[s.key]) continue;
-    let v = rnd(s.list.length);
-    // Keep "None" from showing up too often on optional slots.
-    if (s.list[v].name === "None" && s.key !== "wings" && s.key !== "tail" && s.key !== "aura" && Math.random() < 0.8) v = 1 + rnd(s.list.length - 1);
-    if (s.key === "aura" && Math.random() < 0.45) v = 0;
-    sel[s.key] = v;
+// Odds for randomize. Each pair rolls one outcome:
+// [first only, second only, both, neither].
+const PAIR_ODDS = [
+  { keys: ["legs", "wings"], odds: [0.66, 0.24, 0.05, 0.05] },     // both is rare; legs favoured
+  { keys: ["jaws", "antennae"], odds: [0.45, 0.45, 0.06, 0.04] },  // an even split; both is rare
+];
+const HAVE_ODDS = { spines: 0.22, tail: 0.4, aura: 0.07 };          // chance of having the part at all
+
+const slotOf = key => SLOTS.find(s => s.key === key);
+const has = key => sel[key] !== 0;
+function rollPart(key, present) {
+  if (locks[key]) return;
+  const n = slotOf(key).list.length;
+  sel[key] = present ? 1 + rnd(n - 1) : 0;
+}
+function pick(odds) {
+  let r = Math.random();
+  for (let i = 0; i < odds.length; i++) { if ((r -= odds[i]) < 0) return i; }
+  return odds.length - 1;
+}
+function rollPair({ keys: [a, b], odds }) {
+  // Re-roll until the outcome agrees with any locked part.
+  for (let tries = 0; tries < 60; tries++) {
+    const o = pick(odds);
+    const wantA = o === 0 || o === 2, wantB = o === 1 || o === 2;
+    if ((locks[a] && has(a) !== wantA) || (locks[b] && has(b) !== wantB)) continue;
+    rollPart(a, wantA); rollPart(b, wantB);
+    return;
   }
+}
+
+function randomize() {
+  for (const key of ["head", "eyes", "thorax", "abdomen"]) if (!locks[key]) sel[key] = rnd(slotOf(key).list.length);
+  for (const pair of PAIR_ODDS) rollPair(pair);
+  for (const [key, p] of Object.entries(HAVE_ODDS)) rollPart(key, Math.random() < p);
   if (!locks.pal) sel.pal = rnd(PALETTES.length);
-  sel.mark = Math.random() < 0.55 ? 0 : 1 + rnd(MARKS.length - 1);
+  // Sigils are magic, so they are as rare as magic.
+  const r = Math.random();
+  sel.mark = r < 0.55 ? 0 : r < 0.97 ? 1 + rnd(3) : 4;
   render(true);
 }
 function mutate() {
@@ -1073,6 +1101,12 @@ function mutate() {
   let v = sel[key];
   while (list.length > 1 && v === sel[key]) v = rnd(list.length);
   sel[key] = v;
+  // Adding one half of a rare pair usually removes the other half.
+  const pair = PAIR_ODDS.find(p => p.keys.includes(key));
+  if (pair && v !== 0) {
+    const other = pair.keys.find(k => k !== key);
+    if (has(other) && !locks[other] && Math.random() > pair.odds[2] * 2) sel[other] = 0;
+  }
   render(true);
 }
 
