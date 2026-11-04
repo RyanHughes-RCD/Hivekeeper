@@ -179,7 +179,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 <div class="wrap">
   <header class="top">
     <h1>Pixel Menagerie</h1>
-    <p>Cute, creepy little bugs, seen from above. Each is stitched from up to nine tiny sprites into one shaded, outlined 32×32 sprite.</p>
+    <p>Creepy hive bugs with too many eyes and too many spikes, seen from above. Each is stitched from up to ten tiny sprites into one shaded, outlined 32×32 sprite.</p>
   </header>
 
   <div class="lab">
@@ -204,7 +204,6 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
           <div class="chips" id="bgs" role="group" aria-label="Backdrop"></div>
           <div class="row">
             <label class="toggle"><input type="checkbox" id="gridToggle"> Pixel grid</label>
-            <label class="toggle"><input type="checkbox" id="idleToggle" checked> Scuttle</label>
           </div>
         </div>
         <div class="actions">
@@ -215,7 +214,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 
       <section class="card" aria-label="Parts on the bench">
         <h3>Parts on the bench</h3>
-        <p class="note">These are the source sprites, at their real pixel sizes. Paired parts (eyes, antennae, legs, wings) are drawn once as the left half and mirrored. The stitcher layers them back to front, adds shading from the top left, then traces one outline around the whole silhouette.</p>
+        <p class="note">These are the source sprites, at their real pixel sizes. Paired parts (eyes, antennae, legs, spines, wings) are drawn once as the left half and mirrored. The stitcher layers them back to front, adds shading from the top left, then traces one outline around the whole silhouette.</p>
         <div class="bench" id="bench"></div>
       </section>
     </div>
@@ -294,13 +293,14 @@ const HEADS = [
     ".bbbbbb.",
     "..bbbb..",
   ], eye: [1, 0], ant: [1, 0] },
-  { name: "Slim", rows: [
-    ".bb.",
-    "bbbb",
-    "bbbb",
-    "bbbb",
-    ".bb.",
-  ], eye: [1, 0], ant: [0, 0] },
+  { name: "Hood", rows: [
+    "h.bbbbbb.h",
+    "hbbbbbbbbh",
+    "bbbbbbbbbb",
+    "bbbbbbbbbb",
+    ".bbbbbbbb.",
+    "..bbbbbb..",
+  ], eye: [2, 1], ant: [2, 0] },
   { name: "Wedge", rows: [
     "bbbbbbbb",
     "bbbbbbbb",
@@ -308,42 +308,56 @@ const HEADS = [
     "..bbbb..",
     "...bb...",
   ], eye: [0, 0], ant: [2, 0] },
+  { name: "Horned", rows: [
+    "h......h",
+    "hh.bb.hh",
+    ".bbbbbb.",
+    "bbbbbbbb",
+    "bbbbbbbb",
+    ".bbbbbb.",
+  ], eye: [2, 0], ant: [1, 1] },
 ];
 
 const EYES = [
-  { name: "Dots", rows: [".p"] },
   { name: "Shiny", rows: ["wp", "pp"] },
+  { name: "Glowing", rows: [".g", ".g"] },
   { name: "Compound", rows: ["wgg", "ggg", ".gg"] },
-  { name: "Glowing", rows: [".e", ".e"] },
-  { name: "Many", rows: ["p.p", ".p."] },
-  { name: "Cyclops", rows: ["ee", "ee"], center: true },
+  { name: "Spider", rows: ["p.p", ".p."] },
+  { name: "Cluster", rows: ["g.g", ".g.", "g.g"] },
+  { name: "Crown", rows: ["g.g.", ".g.g"] },
+  { name: "Swarm", rows: ["g.g", "...", ".g.", "g.g"] },
+  { name: "Third eye", rows: ["ee", "ee"], center: true },
 ];
 
 const JAWS = [
   { name: "None", rows: null },
   { name: "Mandibles", rows: ["h....h", "hh..hh", ".hhhh."] },
   { name: "Stag", rows: ["h......h", "hh....hh", ".hh..hh.", "..hhhh.."] },
+  { name: "Talons", rows: ["hh........hh", ".hh......hh.", "..hh....hh..", "...hhhhhh..."] },
   { name: "Fangs", rows: ["k..k", "h..h", "hhhh"] },
-  { name: "Proboscis", rows: ["kk", "kk", "kk"], flat: true },
+  { name: "Feelers", rows: ["k.kk.k", "k.kk.k", ".kkkk."], flat: true },
 ];
 
 const ANTENNAE = [
   { name: "None", rows: null },
   { name: "Straight", rows: ["k..", "k..", ".k.", "..k"], anchor: [2, 3] },
   { name: "Clubbed", rows: ["aa..", "aa..", "..k.", "...k"], anchor: [3, 3] },
-  { name: "Elbowed", rows: ["kk..", "..k.", "..k.", "...k"], anchor: [3, 3] },
+  { name: "Hooked", rows: ["kk..", "..k.", "..k.", "...k"], anchor: [3, 3] },
   { name: "Feathery", rows: ["k.k.", "kkk.", ".kkk", "..kk"], anchor: [3, 3] },
   { name: "Whip", rows: ["kk...", "k....", ".k...", "..k..", "...kk"], anchor: [4, 4] },
+  { name: "Eyestalks", rows: ["gg..", "gg..", "..k.", "...k"], anchor: [3, 3] },
 ];
 
 const THORAXES = [
   { name: "Round", rows: [".bbbb.", "bbbbbb", "bbbbbb", "bbbbbb", ".bbbb."], leg: [0, 2], wing: [1, 1] },
   { name: "Shield", rows: [".bbbbbbbb.", "bbbbbbbbbb", "bbbbbbbbbb", ".bbbbbbbb."], leg: [1, 2], wing: [2, 1] },
   { name: "Slim", rows: [".bb.", "bbbb", "bbbb", "bbbb", ".bb."], leg: [0, 2], wing: [0, 1] },
-  { name: "Hump", rows: ["..bbbb..", ".bbbbbb.", "bbbbbbbb", "bbbbbbbb", ".bbbbbb."], leg: [0, 3], wing: [1, 1] },
   { name: "Spiked", rows: [".hbbbbh.", "hbbbbbbh", "bbbbbbbb", "bbbbbbbb", ".bbbbbb."], leg: [0, 2], wing: [1, 1] },
+  { name: "Horned", rows: ["h......h", ".hbbbbh.", "bbbbbbbb", "bbbbbbbb", "hbbbbbbh", ".bbbbbb."], leg: [0, 3], wing: [1, 2] },
+  { name: "Ridged", rows: ["..bbbb..", ".bbhhbb.", "bbbhhbbb", "bbbhhbbb", ".bbbbbb."], leg: [0, 3], wing: [1, 1] },
 ];
 
+// spike: where side spines attach on the left edge.
 const ABDOMENS = [
   { name: "Dome", rows: [
     ".bbbbssbbbb.",
@@ -355,7 +369,7 @@ const ABDOMENS = [
     ".bbbbssbbbb.",
     "..bbbssbbb..",
     "....bbbb....",
-  ] },
+  ], spike: [0, 3] },
   { name: "Banded", rows: [
     "..bbbb..",
     ".bbbbbb.",
@@ -367,7 +381,7 @@ const ABDOMENS = [
     ".bbbbbb.",
     "..aaaa..",
     "...bb...",
-  ] },
+  ], spike: [0, 4] },
   { name: "Widow", rows: [
     "...bbbb...",
     ".bbbbbbbb.",
@@ -378,27 +392,43 @@ const ABDOMENS = [
     ".bbbaabbb.",
     ".bbbbbbbb.",
     "...bbbb...",
-  ] },
+  ], spike: [0, 3] },
   { name: "Grub", rows: [
     ".bbbb.", "bbaabb", ".bbbb.",
     ".bbbb.", "bbaabb", ".bbbb.",
     ".bbbb.", "bbaabb", ".bbbb.",
     ".bbbb.", "bbaabb", ".bbbb.",
-  ] },
+  ], spike: [0, 4] },
+  { name: "Brood sac", rows: [
+    "...bbbbbb...",
+    ".bbbbbbbbbb.",
+    ".bbgbbbbbbb.",
+    "bbbbbbbbgbbb",
+    "bbbbbbbbbbbb",
+    "bbgbbbbbbbbb",
+    "bbbbbbbgbbbb",
+    ".bbbbbbbbbb.",
+    ".bbbgbbbbbb.",
+    "..bbbbbbbb..",
+    "....bbbb....",
+  ], spike: [0, 4] },
+  { name: "Plated", rows: [
+    ".hbbbbbbh.",
+    "bbbbbbbbbb",
+    ".ssssssss.",
+    "hbbbbbbbbh",
+    "bbbbbbbbbb",
+    ".ssssssss.",
+    "hbbbbbbbbh",
+    ".bbbbbbbb.",
+    "..ssssss..",
+    "..bbbbbb..",
+    "....hh....",
+  ], spike: [0, 4] },
   { name: "Needle", rows: [
     ".bb.", "bbbb", "bbbb", ".bb.", ".bb.", ".aa.",
     ".bb.", ".aa.", ".bb.", ".aa.", ".bb.", ".bb.",
-  ] },
-  { name: "Teardrop", rows: [
-    ".bbbbbb.",
-    "bbbbbbbb",
-    "bbbbbbbb",
-    "bbbbbbbb",
-    ".bbbbbb.",
-    ".bbbbbb.",
-    "..bbbb..",
-    "...bb...",
-  ] },
+  ], spike: [0, 2] },
 ];
 
 // Left legs only; anchor lands on the thorax's leg point.
@@ -406,9 +436,20 @@ const LEGS = [
   { name: "None", rows: null },
   { name: "Six", rows: ["k....", ".k...", "..kkk", ".....", "kkkkk", ".....", "..kkk", ".k...", "k...."], anchor: [4, 4] },
   { name: "Eight", rows: ["kk....", "..k...", "...kkk", "kk....", "..kkkk", "......", "..kkkk", "kk....", "...kkk", "..k...", "kk...."], anchor: [5, 5] },
-  { name: "Stilts", rows: ["k.....", "k.....", ".k....", "..kkkk", "......", "kkkkkk", "......", "..kkkk", ".k....", "k.....", "k....."], anchor: [5, 5] },
+  { name: "Scythes", rows: ["h......", "hh.....", ".hh....", "..hhkkk", ".......", "kkkkkkk", ".......", "...kkkk", "..k....", ".k....."], anchor: [6, 5] },
   { name: "Hooked", rows: ["kk...", ".k...", "..kkk", "k....", ".kkkk", "k....", "..kkk", ".k...", "kk..."], anchor: [4, 4] },
-  { name: "Nubs", rows: ["kk.", ".kk", "...", "kkk", "...", ".kk", "kk."], anchor: [2, 3] },
+  { name: "Stilts", rows: ["k.....", "k.....", ".k....", "..kkkk", "......", "kkkkkk", "......", "..kkkk", ".k....", "k.....", "k....."], anchor: [5, 5] },
+];
+
+// Spines attach to the thorax shoulders ("thorax") or along the abdomen's sides ("abdomen");
+// "center" spines run down the back.
+const SPINES = [
+  { name: "None", rows: null },
+  { name: "Blades", rows: ["h....", "hh...", ".hh..", "..hhh", "...hh"], anchor: [4, 4], on: "thorax" },
+  { name: "Barbs", rows: ["h..", "hh.", ".hh", "h..", "hh.", ".hh"], anchor: [2, 2], on: "abdomen" },
+  { name: "Quills", rows: ["k...", ".k..", "..kk", "k...", ".kkk", "k...", "..kk", ".k..", "k..."], anchor: [3, 4], on: "abdomen" },
+  { name: "Ridge", rows: ["hh", "..", "hh", "..", "hh", "..", "hh"], center: true, dy: 1 },
+  { name: "Thorns", rows: ["h...", ".h..", "..hh", "....", "h...", ".hhh"], anchor: [3, 2], on: "abdomen" },
 ];
 
 const WINGS = [
@@ -428,30 +469,31 @@ const WINGS = [
   { name: "Glassy", rows: [".ccccc.", "ccccccc", "cccccc.", ".ccccc.", "..ccc.."], anchor: [6, 0] },
   { name: "Dragonfly", rows: ["cccccccc..", ".ccccccccc", "..........", "cccccccc..", ".ccccccccc"], anchor: [9, 1] },
   { name: "Shell", rows: ["...bb", "..bbb", ".bbbb", ".bbbb", "bbbb.", "bbbb.", "bbb..", "bb..."], anchor: [4, 0] },
-  { name: "Moth", rows: ["..aaaaaa", ".aaaaaaa", "aaagaaaa", "aaaaaaaa", ".aaaaaaa", "...aaaaa", ".....aaa"], anchor: [7, 1] },
+  { name: "Veined", rows: ["h.....", ".haaaa", "ahaaka", "aahkaa", "aakhaa", ".a.ah.", "....h."], anchor: [5, 1] },
   { name: "Tattered", rows: ["..aaaaa", ".aaaaaa", "aaaaaaa", "a.aa.aa", "...a..a"], anchor: [6, 0] },
 ];
 
 const TAILS = [
   { name: "None", rows: null },
-  { name: "Stinger", rows: ["kk", "kk", "k."] },
+  { name: "Stinger", rows: ["hh", "hh", "h."] },
   { name: "Cerci", rows: [".k..k.", "k....k"] },
   { name: "Spinnerets", rows: [".hh.", "h..h"] },
   { name: "Lantern", rows: [".yy.", "yyyy", ".yy."], dy: -2 },
+  { name: "Pincers", rows: [".h..h.", "h....h", "h....h", ".h..h."] },
 ];
 
 const PALETTES = [
-  { name: "Ladybird", skin: ["#ff7a6a", "#e02a2a", "#9a1420"], accent: ["#4a4458", "#26222e", "#141018"], bone: ["#f5efe6", "#cfc3b2", "#8a7c6a"], outline: "#130b10", iris: "#9be0ff" },
-  { name: "Jewel",    skin: ["#7ef0a8", "#20b46e", "#0c6b4c"], accent: ["#fff0a0", "#f2c53d", "#b5821f"], bone: ["#f0e6d0", "#b8a27c", "#6e5a3e"], outline: "#0b1f1a", iris: "#ff4a4a" },
-  { name: "Ember",    skin: ["#ff9a5a", "#c8401e", "#7a1e14"], accent: ["#3a2a2a", "#1e1414", "#100a0a"], bone: ["#f2d8b0", "#b98c5a", "#6e4a28"], outline: "#1c0a08", iris: "#ffb000" },
-  { name: "Wasp",     skin: ["#fff27a", "#f2c21a", "#b8820f"], accent: ["#5a5050", "#2c2626", "#151212"], bone: ["#ffffff", "#d0cac0", "#8f887c"], outline: "#1a1408", iris: "#ff3b3b" },
-  { name: "Orchid",   skin: ["#f7a8d8", "#d0509a", "#8a2a68"], accent: ["#ffd0ea", "#ee80c0", "#a83c80"], bone: ["#fff1f6", "#e8c0d4", "#a87890"], outline: "#2a0c20", iris: "#3fd6ff" },
-  { name: "Night",    skin: ["#6a6a8a", "#3a3a56", "#22223a"], accent: ["#7affd8", "#25c8a0", "#127a64"], bone: ["#e6e6f0", "#a8a8bd", "#6a6a80"], outline: "#0a0a14", iris: "#e8ff5a" },
-  { name: "Teal",     skin: ["#7ae8d8", "#1fa69a", "#0e5e60"], accent: ["#c8f8ff", "#62cfe8", "#2a86a8"], bone: ["#f0fff8", "#b8dccc", "#6e9a8a"], outline: "#071a1c", iris: "#ff5a8a" },
-  { name: "Bark",     skin: ["#c4865a", "#8a4f2e", "#55301f"], accent: ["#e8b88a", "#c08a5c", "#8a5a38"], bone: ["#f2e6c8", "#c8b088", "#7e6440"], outline: "#1c0f0a", iris: "#ffd23f" },
+  { name: "Brood",  skin: ["#a4789c", "#6e3f6a", "#3e1f42"], accent: ["#e8d4b8", "#bfa080", "#7e6048"], bone: ["#f2e2c4", "#c8a87c", "#7e6040"], outline: "#14070f", iris: "#ffb020" },
+  { name: "Acid",   skin: ["#76846a", "#4a5642", "#2a3226"], accent: ["#d4ff6a", "#8fd42a", "#4e8a14"], bone: ["#e8e4c8", "#b0a880", "#6e6848"], outline: "#0a0d08", iris: "#b8ff3a" },
+  { name: "Ichor",  skin: ["#c0566a", "#7a2236", "#46101e"], accent: ["#f0b8a0", "#c87860", "#80402c"], bone: ["#f4e6d0", "#c8b090", "#806848"], outline: "#160408", iris: "#ffe14a" },
+  { name: "Chitin", skin: ["#6a70a0", "#3a4068", "#1d203a"], accent: ["#c890ff", "#8a4ad6", "#50248a"], bone: ["#e6e0f0", "#aaa0c0", "#685e80"], outline: "#08081a", iris: "#ff3df2" },
+  { name: "Rot",    skin: ["#b0a874", "#746c40", "#403c20"], accent: ["#e0c0e0", "#a878a8", "#684068"], bone: ["#f0ead0", "#c4b88c", "#7a704c"], outline: "#121008", iris: "#ff4040" },
+  { name: "Ember",  skin: ["#9a948e", "#5e5852", "#36322e"], accent: ["#ff8a50", "#d84a20", "#8a2410"], bone: ["#f0ece4", "#c0b8a8", "#7a7064"], outline: "#0e0c0a", iris: "#ff5a1f" },
+  { name: "Blood",  skin: ["#ff6a5a", "#c81e2a", "#7a0e18"], accent: ["#4a4458", "#26222e", "#141018"], bone: ["#f5efe6", "#cfc3b2", "#8a7c6a"], outline: "#130b10", iris: "#fff04a" },
+  { name: "Abyss",  skin: ["#4e9a98", "#1e5a60", "#0e3038"], accent: ["#9affe0", "#3ad6b0", "#16806a"], bone: ["#e4f0e8", "#a8c4b8", "#647e74"], outline: "#041214", iris: "#9affe0" },
 ];
 
-const MARKS = ["None", "Spots", "Stripes"];
+const MARKS = ["None", "Spots", "Stripes", "Pustules"];
 const BACKDROPS = [["lavender", "Lavender"], ["leaf", "Leaf"], ["soil", "Soil"], ["night", "Night"], ["lab", "Clear"]];
 
 const SLOTS = [
@@ -462,6 +504,7 @@ const SLOTS = [
   { key: "thorax", label: "Thorax", list: THORAXES },
   { key: "abdomen", label: "Abdomen", list: ABDOMENS },
   { key: "legs", label: "Legs", list: LEGS, pair: true },
+  { key: "spines", label: "Spines", list: SPINES, pair: true },
   { key: "wings", label: "Wings", list: WINGS, pair: true },
   { key: "tail", label: "Tail", list: TAILS },
 ];
@@ -495,6 +538,7 @@ const wOf = s => s.rows[0].length, hOf = s => s.rows.length;
 function buildLayers(sel, frame) {
   const head = HEADS[sel.head], eyes = EYES[sel.eyes], jaws = JAWS[sel.jaws], ant = ANTENNAE[sel.antennae];
   const thx = THORAXES[sel.thorax], abd = ABDOMENS[sel.abdomen], legs = LEGS[sel.legs], wings = WINGS[sel.wings], tail = TAILS[sel.tail];
+  const spines = SPINES[sel.spines];
   const f = frame ? 1 : 0;
   const TX = C - wOf(thx) / 2, TY = 24;
   const HX = C - wOf(head) / 2, HY = TY - hOf(head) + 1;
@@ -503,7 +547,7 @@ function buildLayers(sel, frame) {
 
   // Legs scuttle: on the second frame the left legs step down and the right legs step up.
   if (legs.rows) {
-    const L = layer("legs", { shade: false, outline: false });
+    const L = layer("legs", { outline: false });
     stamp(L, legs.rows, TX + thx.leg[0] - legs.anchor[0], TY + thx.leg[1] - legs.anchor[1] + f, true, -2 * f);
     out.push(L);
   }
@@ -518,7 +562,19 @@ function buildLayers(sel, frame) {
     stamp(L, wings.rows, TX + thx.wing[0] - wings.anchor[0] - f, TY + thx.wing[1] - wings.anchor[1], true);
     out.push(L);
   }
+  // Side spines sit behind the body; a centre ridge sits on top of the abdomen.
+  if (spines.rows && !spines.center) {
+    const L = layer("spines");
+    const [px, py] = spines.on === "thorax" ? [TX + thx.wing[0], TY + thx.wing[1]] : [AX + abd.spike[0], AY + abd.spike[1]];
+    stamp(L, spines.rows, px - spines.anchor[0], py - spines.anchor[1], true);
+    out.push(L);
+  }
   { const L = layer("abdomen", { mark: true }); stamp(L, abd.rows, AX, AY, false); out.push(L); }
+  if (spines.rows && spines.center) {
+    const L = layer("spines");
+    stamp(L, spines.rows, C - 1, AY + (spines.dy || 0), false);
+    out.push(L);
+  }
   if (tail.rows) {
     const L = layer("tail");
     stamp(L, tail.rows, C - wOf(tail) / 2, AY + hOf(abd) + (tail.dy || 0), false);
@@ -542,9 +598,10 @@ function buildLayers(sel, frame) {
 }
 
 function markAt(mark, lx, ly) {
-  if (mark === 1) { const band = Math.floor(ly / 3); return ly % 3 !== 0 && ((lx + band * 3) % 6 === 1 || (lx + band * 3) % 6 === 2); }
-  if (mark === 2) return ly % 3 === 2;
-  return false;
+  if (mark === 1) { const band = Math.floor(ly / 3); return ly % 3 !== 0 && ((lx + band * 3) % 6 === 1 || (lx + band * 3) % 6 === 2) ? "a" : null; }
+  if (mark === 2) return ly % 3 === 2 ? "a" : null;
+  if (mark === 3) return (lx * 7 + ly * 5) % 11 === 0 ? "g" : null;
+  return null;
 }
 
 function colorFor(ch, tone, pal) {
@@ -574,7 +631,7 @@ function paintLayer(grid, L, pal, mark) {
       if (dn || rt) tone = 2; else if (up || lf) tone = 0;
     }
     let ch = p.ch;
-    if (L.mark && ch === "b" && tone === 1 && markAt(mark, p.lx, p.ly)) ch = "a";
+    if (L.mark && ch === "b" && tone === 1) ch = markAt(mark, p.lx, p.ly) || ch;
     colors.push([i, colorFor(ch, tone, pal), ch === "k"]);
   }
   // Inner outline: where this part sits on top of an earlier part, trace a seam.
@@ -620,9 +677,9 @@ function composeGrid(sel, frame) {
   return grid;
 }
 
-// Returns two 32x32 frames (rest + bob), sharing the rest frame's framing.
+// Returns the finished 32x32 sprite, centred.
 function compose(sel) {
-  const g0 = composeGrid(sel, 0), g1 = composeGrid(sel, 1);
+  const g0 = composeGrid(sel, 0);
   const b = bbox(g0);
   const ox = Math.floor((OUT - b.w) / 2) - b.x0;
   const oy = Math.floor((OUT - b.h) / 2) - b.y0;
@@ -634,7 +691,7 @@ function compose(sel) {
     }
     return px;
   };
-  return { frames: [crop(g0), crop(g1)], box: { x0: b.x0 + ox, x1: b.x1 + ox, y1: b.y1 + oy } };
+  return { frames: [crop(g0)] };
 }
 
 // A single source sprite with its own shading + outline, for the bench and slot icons.
@@ -819,8 +876,7 @@ function renderSlots() {
 
 function paintFrame() {
   if (!current) return;
-  const f = $("idleToggle").checked ? frame : 0;
-  drawPx($("out"), current.frames[f], OUT, OUT);
+  drawPx($("out"), current.frames[0], OUT, OUT);
 }
 
 function render(record) {
@@ -869,7 +925,7 @@ function randomize() {
     if (locks[s.key]) continue;
     let v = rnd(s.list.length);
     // Keep "None" from showing up too often on optional slots.
-    if (s.list[v].name === "None" && s.key !== "wings" && s.key !== "tail" && s.key !== "jaws" && Math.random() < 0.7) v = 1 + rnd(s.list.length - 1);
+    if (s.list[v].name === "None" && s.key !== "wings" && s.key !== "tail" && Math.random() < 0.8) v = 1 + rnd(s.list.length - 1);
     sel[s.key] = v;
   }
   if (!locks.pal) sel.pal = rnd(PALETTES.length);
@@ -915,16 +971,12 @@ function wire() {
   };
   $("bigToggle").onchange = () => { drawPx($("out"), current.frames[0], OUT, OUT); updatePng(); paintFrame(); };
   $("gridToggle").onchange = e => { $("gridOverlay").hidden = !e.target.checked; };
-  $("idleToggle").onchange = () => { frame = 0; paintFrame(); };
   document.addEventListener("keydown", e => {
     if (e.target.closest && e.target.closest("input, textarea")) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === "r" || e.key === "R") { e.preventDefault(); randomize(); }
     if (e.key === "m" || e.key === "M") { e.preventDefault(); mutate(); }
   });
-  const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduce) $("idleToggle").checked = false;
-  setInterval(() => { if ($("idleToggle").checked) { frame ^= 1; paintFrame(); } }, 480);
 }
 
 function start(data) {
@@ -940,17 +992,17 @@ function start(data) {
   else {
     // A few hand-picked examples so the page opens with a gallery.
     // Hand-picked examples so the page opens with a gallery.
-    const ex = (head, eyes, jaws, antennae, thorax, abdomen, legs, wings, tail, pal, mark) =>
-      ({ head, eyes, jaws, antennae, thorax, abdomen, legs, wings, tail, pal, mark });
+    const ex = (head, eyes, jaws, antennae, thorax, abdomen, legs, spines, wings, tail, pal, mark) =>
+      ({ head, eyes, jaws, antennae, thorax, abdomen, legs, spines, wings, tail, pal, mark });
     recent = [
-      ex(0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1),  // ladybird
-      ex(2, 2, 0, 1, 2, 4, 1, 3, 0, 6, 0),  // dragonfly
-      ex(0, 1, 1, 3, 2, 1, 1, 2, 1, 3, 0),  // wasp
-      ex(3, 0, 1, 3, 2, 3, 5, 0, 0, 1, 0),  // grub
-      ex(0, 4, 3, 0, 0, 2, 2, 0, 3, 5, 0),  // spider
-      ex(1, 1, 1, 2, 4, 0, 4, 4, 0, 7, 0),  // beetle
+      ex(5, 4, 3, 0, 4, 4, 3, 1, 0, 1, 0, 3),  // brood beast
+      ex(3, 6, 4, 6, 3, 2, 2, 3, 0, 3, 3, 0),  // many-eyed spider
+      ex(2, 2, 1, 5, 2, 6, 1, 0, 3, 0, 1, 0),  // acid dragonfly
+      ex(4, 5, 2, 3, 5, 5, 4, 4, 5, 5, 2, 0),  // plated hunter
+      ex(0, 1, 5, 1, 0, 0, 1, 5, 4, 0, 6, 1),  // blood beetle
+      ex(1, 7, 4, 4, 1, 1, 5, 2, 6, 4, 4, 0),  // rot moth
     ].map(toCode);
-    sel = ex(2, 1, 0, 2, 0, 5, 1, 1, 0, 4, 0);  // butterfly
+    sel = ex(3, 4, 3, 1, 3, 4, 3, 1, 5, 1, 0, 0);
   }
   render(true);
   window.claude?.hot?.snapshot?.(() => ({ sel, recent }));
