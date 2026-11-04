@@ -648,12 +648,6 @@ function buildLayers(sel, frame) {
     stamp(L, ant.rows, C - 1 - head.ant[0] - ant.anchor[0], HY + head.ant[1] - ant.anchor[1] + f, true, -f);
     out.push(L);
   }
-  // Wings flutter one pixel outward.
-  if (wings.rows) {
-    const L = layer("wings", { glow: !!wings.glow });
-    stamp(L, wings.rows, TX + thx.wing[0] - wings.anchor[0] - f, TY + thx.wing[1] - wings.anchor[1], true);
-    out.push(L);
-  }
   // Side spines sit behind the body; a centre ridge sits on top of the abdomen.
   if (spines.rows && !spines.center) {
     const L = layer("spines");
@@ -684,6 +678,12 @@ function buildLayers(sel, frame) {
     const ey = HY + head.eye[0];
     if (eyes.center) stamp(L, eyes.rows, C - wOf(eyes) / 2, ey, false);
     else stamp(L, eyes.rows, HX + head.eye[1], ey, true);
+    out.push(L);
+  }
+  // Wings lie on top of the body, so they cover its edges.
+  if (wings.rows) {
+    const L = layer("wings", { glow: !!wings.glow });
+    stamp(L, wings.rows, TX + thx.wing[0] - wings.anchor[0], TY + thx.wing[1] - wings.anchor[1], true);
     out.push(L);
   }
   // Light magic floats on top and is never outlined.
