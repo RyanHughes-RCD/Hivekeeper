@@ -1,63 +1,990 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>Little Bee Haven</title>
-  <meta name="description" content="A cosy beekeeping game: grow a pastel cottage garden, harvest honey and collect adorable bees.">
-  <meta name="theme-color" content="#fde2ef">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Bee Haven">
-  <meta name="format-detection" content="telephone=no">
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-  <div id="app">
-    <canvas id="scene" aria-label="Little Bee Haven game"></canvas>
-    <div id="fade"></div>
+<title>Pixel Menagerie</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: specimen lab — a big pixel "stage" card with the parts bench beneath it on the left, a control rack on the right; stacks on phones. */
+:root {
+  --bg: #e7e4ee;
+  --panel: #f7f6fa;
+  --ink: #221e2d;
+  --muted: #6a6480;
+  --line: #d3cde0;
+  --accent: #5a3fd1;
+  --accent-ink: #ffffff;
+  --accent-soft: #e4ddff;
+  --chip: #ece9f3;
+  --display: "Pixelify Sans", "Courier New", monospace;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14121b; --panel: #1e1b28; --ink: #ebe8f3; --muted: #9b95ae; --line: #322d42;
+    --accent: #a994ff; --accent-ink: #15121f; --accent-soft: #2c2547; --chip: #272334;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14121b; --panel: #1e1b28; --ink: #ebe8f3; --muted: #9b95ae; --line: #322d42;
+  --accent: #a994ff; --accent-ink: #15121f; --accent-soft: #2c2547; --chip: #272334;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 48px;
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(28px, 5vw, 40px); line-height: 1; margin: 0; letter-spacing: 0.01em; }
+header.top p { margin: 0; color: var(--muted); max-width: 52ch; }
+h2, h3, h4 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap: balance; }
+h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); }
+h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); }
 
-    <header id="hud">
-      <div class="pill" id="pill-honey"><img id="hud-honey-icon" alt=""><span id="hud-honey">0</span></div>
-      <div class="pill" id="pill-pollen"><img id="hud-pollen-icon" alt=""><span id="hud-pollen">0</span></div>
-      <div class="level" title="Keeper level">
-        <span class="lv">Lv <b id="hud-level">1</b></span>
-        <div class="xp"><i id="hud-xp"></i></div>
-      </div>
-      <button class="icon-btn" id="btn-settings" aria-label="Settings">⚙︎</button>
-    </header>
+.lab { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 880px) { .lab { grid-template-columns: minmax(0, 1fr); } }
+.col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 
-    <div id="scene-label"></div>
+/* Specimen tag */
+.tag { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.tag .no { font-family: var(--mono); font-size: 12px; color: var(--muted); letter-spacing: 0.06em; }
+.tag h2 { font-size: clamp(26px, 4.4vw, 34px); line-height: 1.05; }
+.codebox { display: flex; align-items: center; gap: 8px; }
+.codebox code { font-family: var(--mono); font-size: 13px; background: var(--chip); padding: 4px 8px; border-radius: 4px; letter-spacing: 0.08em; }
 
-    <div id="scene-tools">
-      <button class="fab" id="btn-collect" hidden>🌼 <span>Collect</span></button>
-      <button class="fab" id="btn-harvest" hidden>🍯 <span>Harvest all</span></button>
-      <button class="fab" id="btn-decorate">✏️ <span>Decorate</span></button>
+/* Stage */
+.stage {
+  position: relative; width: 100%; max-width: 448px; aspect-ratio: 1; margin: 0 auto;
+  border: 3px solid var(--ink); border-radius: 2px; overflow: hidden;
+  box-shadow: 0 4px 0 0 var(--ink);
+  --sky: #bfe3c4; --floor: #7cbf6a;
+  background: linear-gradient(to bottom, var(--sky) 0 84.375%, var(--floor) 84.375% 100%);
+}
+.stage[data-bg="meadow"] { --sky: #c9ecd0; --floor: #86c36c; }
+.stage[data-bg="cave"] { --sky: #3a3450; --floor: #262135; }
+.stage[data-bg="sky"] { --sky: #cfe8ff; --floor: #f3f7ff; }
+.stage[data-bg="dusk"] { --sky: #f7c9a8; --floor: #b07a8c; }
+.stage[data-bg="lab"] {
+  background-color: #ffffff;
+  background-image: conic-gradient(#e6e3ec 25%, #ffffff 0 50%, #e6e3ec 0 75%, #ffffff 0);
+  background-size: 12.5% 12.5%;
+}
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
+.stage .grid {
+  position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(20, 16, 30, 0.16) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(20, 16, 30, 0.16) 1px, transparent 1px);
+  background-size: 3.125% 3.125%;
+}
+.stage .dims { position: absolute; right: 6px; bottom: 4px; font-family: var(--mono); font-size: 11px; color: rgba(20,16,30,0.55); }
+.stage[data-bg="cave"] .dims { color: rgba(255,255,255,0.55); }
+
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.row.between { justify-content: space-between; }
+
+/* Buttons */
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn {
+  font-family: var(--display); font-weight: 600; font-size: 16px;
+  border: 2px solid var(--ink); background: var(--panel); color: var(--ink);
+  padding: 9px 16px; border-radius: 3px; box-shadow: 0 3px 0 0 var(--ink);
+  transition: transform 60ms, box-shadow 60ms;
+}
+.btn:active { transform: translateY(3px); box-shadow: 0 0 0 0 var(--ink); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.small { font-size: 13px; padding: 4px 10px; box-shadow: 0 2px 0 0 var(--ink); }
+.btn.small:active { transform: translateY(2px); }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.actions .btn { flex: 1 1 160px; max-width: 220px; }
+.kbd { font-family: var(--mono); font-size: 11px; opacity: 0.75; margin-left: 6px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  border: 1px solid var(--line); background: var(--chip); border-radius: 999px;
+  padding: 4px 11px; font-size: 13px;
+}
+.chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); font-weight: 700; }
+.toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.toggle input { accent-color: var(--accent); width: 16px; height: 16px; }
+
+/* Slots */
+.slots { display: flex; flex-direction: column; }
+.slot {
+  display: grid; grid-template-columns: 64px 32px minmax(0, 1fr) 32px 34px; align-items: center; gap: 6px;
+  padding: 7px 0; border-top: 1px solid var(--line);
+}
+.slot:first-child { border-top: 0; padding-top: 0; }
+.slot .lbl { font-family: var(--display); font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.slot .val { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.slot .val canvas { width: 28px; height: 28px; image-rendering: pixelated; flex: none; background: var(--chip); border-radius: 3px; }
+.slot .val span { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slot .val small { font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+.arrow {
+  width: 32px; height: 32px; border: 1px solid var(--line); background: var(--chip); border-radius: 4px;
+  display: grid; place-items: center; font-family: var(--display); font-size: 16px; line-height: 1;
+}
+.arrow:hover { border-color: var(--accent); }
+.lock {
+  width: 34px; height: 32px; border: 1px solid transparent; background: transparent; border-radius: 4px;
+  display: grid; place-items: center; color: var(--muted);
+}
+.lock svg { width: 16px; height: 16px; }
+.lock[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+
+/* Palettes */
+.pals { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.pal {
+  border: 1px solid var(--line); background: var(--chip); border-radius: 4px; padding: 6px; display: flex; flex-direction: column; gap: 5px; align-items: stretch; text-align: left;
+}
+.pal .sw { display: grid; grid-template-columns: repeat(6, 1fr); height: 14px; border-radius: 2px; overflow: hidden; }
+.pal .sw i { display: block; }
+.pal span { font-size: 12px; }
+.pal[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); font-weight: 700; }
+
+/* Bench */
+.bench { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.part {
+  background: var(--chip); border-radius: 4px; padding: 10px 8px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.part .pc { height: 72px; display: grid; place-items: center; }
+.part canvas { image-rendering: pixelated; }
+.part b { font-family: var(--display); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
+.part small { font-family: var(--mono); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.note { margin: 0; color: var(--muted); font-size: 14px; max-width: 62ch; }
+
+/* Save */
+.save { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.save img { width: 128px; height: 128px; image-rendering: pixelated; border: 1px solid var(--line); border-radius: 3px;
+  background-color: #fff; background-image: conic-gradient(#e6e3ec 25%, #fff 0 50%, #e6e3ec 0 75%, #fff 0); background-size: 16px 16px; }
+.save .txt { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1 1 180px; }
+.status { font-size: 13px; color: var(--muted); min-height: 1.4em; }
+
+/* History */
+.recent { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 8px; }
+.recent button { border: 1px solid var(--line); background: var(--chip); border-radius: 4px; padding: 4px; aspect-ratio: 1; }
+.recent button:hover { border-color: var(--accent); }
+.recent canvas { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
+.empty { color: var(--muted); font-size: 13px; margin: 0; }
+
+@media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>Pixel Menagerie</h1>
+    <p>Each creature is stitched from up to nine tiny sprites, shaded and outlined together into one 32×32 sprite.</p>
+  </header>
+
+  <div class="lab">
+    <div class="col">
+      <section class="card" aria-label="Current creature">
+        <div class="tag">
+          <div>
+            <div class="no" id="specNo">SPECIMEN No. 000</div>
+            <h2 id="name">Creature</h2>
+          </div>
+          <div class="codebox">
+            <code id="code" title="Creature code">00000000000</code>
+            <button class="btn small" id="copyCode" type="button">Copy code</button>
+          </div>
+        </div>
+        <div class="stage" id="stage" data-bg="meadow">
+          <canvas id="shadow" width="32" height="32" aria-hidden="true"></canvas>
+          <canvas id="out" width="32" height="32" role="img" aria-label="Generated creature sprite"></canvas>
+          <div class="grid" id="gridOverlay" hidden></div>
+          <div class="dims">32×32</div>
+        </div>
+        <div class="row between">
+          <div class="chips" id="bgs" role="group" aria-label="Backdrop"></div>
+          <div class="row">
+            <label class="toggle"><input type="checkbox" id="gridToggle"> Pixel grid</label>
+            <label class="toggle"><input type="checkbox" id="idleToggle" checked> Idle bob</label>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn primary" id="rand" type="button">Randomize<span class="kbd">R</span></button>
+          <button class="btn" id="mutate" type="button">Mutate one part<span class="kbd">M</span></button>
+        </div>
+      </section>
+
+      <section class="card" aria-label="Parts on the bench">
+        <h3>Parts on the bench</h3>
+        <p class="note">These are the source sprites, at their real pixel sizes. Paired parts (eyes, ears, arms, legs, wings) are drawn once and mirrored. The stitcher layers them back to front, adds shading from the top left, then traces one outline around the whole silhouette.</p>
+        <div class="bench" id="bench"></div>
+      </section>
     </div>
 
-    <div id="tray" hidden>
-      <div class="tray-top">
-        <div id="tray-actions"></div>
-        <button class="pill-btn done" id="tray-done">Done</button>
-      </div>
-      <div id="tray-items"></div>
+    <div class="col">
+      <section class="card" aria-label="Parts">
+        <div class="row between"><h3>Parts</h3><span class="status" style="min-height:0">Lock a part to keep it when you randomize</span></div>
+        <div class="slots" id="slots"></div>
+      </section>
+
+      <section class="card" aria-label="Colour">
+        <div class="row between"><h3>Palette</h3>
+          <button class="lock" id="palLock" type="button" aria-pressed="false" aria-label="Lock palette"></button>
+        </div>
+        <div class="pals" id="pals"></div>
+        <h4>Markings</h4>
+        <div class="chips" id="marks" role="group" aria-label="Markings"></div>
+      </section>
+
+      <section class="card" aria-label="Save">
+        <h3>Save sprite</h3>
+        <div class="save">
+          <img id="png" alt="Creature sprite, 32 by 32 pixels, scaled up">
+          <div class="txt">
+            <p class="note">Right-click or long-press the picture to save it. It is a 256×256 PNG with a transparent background (8× the 32×32 sprite).</p>
+            <div class="row">
+              <button class="btn small" id="copyPng" type="button">Copy image</button>
+              <label class="toggle"><input type="checkbox" id="bigToggle" checked> 8× size</label>
+            </div>
+            <div class="status" id="saveStatus" aria-live="polite"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-label="Recent creatures">
+        <h3>Recent</h3>
+        <div class="recent" id="recent"></div>
+      </section>
     </div>
-
-    <nav id="tabbar">
-      <button data-nav="garden" class="active"><span class="ico">🌷</span><span>Garden</span><i class="badge" hidden></i></button>
-      <button data-nav="hive"><span class="ico">🍯</span><span>Hive</span><i class="badge" hidden></i></button>
-      <button data-nav="bees"><span class="ico">🐝</span><span>Bees</span></button>
-      <button data-nav="shop"><span class="ico">🛍️</span><span>Shop</span></button>
-    </nav>
-
-    <div id="toasts" aria-live="polite"></div>
-    <div id="modal-root"></div>
   </div>
-  <noscript><p style="padding:2rem;font-family:system-ui">Little Bee Haven needs JavaScript to run.</p></noscript>
-  <script type="module" src="js/main.js"></script>
-</body>
-</html>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+/* ------------------------------------------------------------------
+   Sprite data. Characters:
+   .  empty         b  skin (auto-shaded)   a  accent (auto-shaded)
+   h  bone/horn     s  skin shade            l  skin light
+   w  eye white     p  pupil                 g  iris / glow
+   k  mouth dark    t  tooth                 r  tongue
+   Paired parts are drawn as the creature's LEFT side and mirrored.
+------------------------------------------------------------------- */
+const BODIES = [
+  { name: "Bean", rows: [
+    "..bbbbbbbb..",
+    ".bbbbbbbbbb.",
+    "bbbbbbbbbbbb",
+    "bbbbaaaabbbb",
+    "bbbaaaaaabbb",
+    "bbbaaaaaabbb",
+    "bbbaaaaaabbb",
+    ".bbbaaaabbb.",
+    "..bbbbbbbb..",
+  ], arm: [1, 3], leg: [3, 7], tail: [10, 5], wing: [3, 1] },
+  { name: "Tall", rows: [
+    "..bbbbbb..",
+    ".bbbbbbbb.",
+    ".bbbaabbb.",
+    "bbbaaaabbb",
+    "bbbaaaabbb",
+    "bbbaaaabbb",
+    "bbbaaaabbb",
+    "bbbaaaabbb",
+    ".bbbaabbb.",
+    "..bbbbbb..",
+  ], arm: [1, 3], leg: [3, 8], tail: [8, 6], wing: [2, 1] },
+  { name: "Chunky", rows: [
+    "...bbbbbbbb...",
+    ".bbbbbbbbbbbb.",
+    "bbbbbbbbbbbbbb",
+    "bbbbbaaaabbbbb",
+    "bbbbaaaaaabbbb",
+    "bbbbaaaaaabbbb",
+    "bbbbaaaaaabbbb",
+    ".bbbbaaaabbbb.",
+    "..bbbbbbbbbb..",
+  ], arm: [1, 3], leg: [4, 7], tail: [12, 5], wing: [3, 1] },
+  { name: "Pear", rows: [
+    "...bbbbbb...",
+    "..bbbbbbbb..",
+    "..bbbaabbb..",
+    ".bbbaaaabbb.",
+    ".bbaaaaaabb.",
+    "bbbaaaaaabbb",
+    "bbbaaaaaabbb",
+    "bbbbaaaabbbb",
+    ".bbbbbbbbbb.",
+  ], arm: [2, 3], leg: [3, 7], tail: [10, 5], wing: [3, 1] },
+  { name: "Segmented", rows: [
+    "...bbbbbb...",
+    "..bbbbbbbb..",
+    "..bbbbbbbb..",
+    "...ssssss...",
+    "..bbbaabbb..",
+    ".bbbaaaabbb.",
+    ".bbbaaaabbb.",
+    ".bbbaaaabbb.",
+    "..bbbaabbb..",
+    "...bbbbbb...",
+  ], arm: [2, 1], leg: [3, 8], tail: [9, 7], wing: [3, 0] },
+  { name: "Blob", rows: [
+    "....bbbbbb....",
+    "..bbbbbbbbbb..",
+    ".bbbbbbbbbbbb.",
+    "bbbbbaaaabbbbb",
+    "bbbbaaaaaabbbb",
+    "bbbbaaaaaabbbb",
+    "bbbbbaaaabbbbb",
+    "bbbbbbbbbbbbbb",
+  ], arm: [1, 3], leg: [4, 6], tail: [12, 4], wing: [4, 1] },
+];
+
+const HEADS = [
+  { name: "Round", rows: [
+    "...bbbb...",
+    ".bbbbbbbb.",
+    "bbbbbbbbbb",
+    "bbbbbbbbbb",
+    "bbbbbbbbbb",
+    "bbbbbbbbbb",
+    "bbbbbbbbbb",
+    ".bbbbbbbb.",
+    "..bbbbbb..",
+  ], eye: [3, 1], mouth: 6, ear: [3, 2] },
+  { name: "Boxy", rows: [
+    ".bbbbbbbbbb.",
+    "bbbbbbbbbbbb",
+    "bbbbbbbbbbbb",
+    "bbbbbbbbbbbb",
+    "bbbbbbbbbbbb",
+    "bbbbbbbbbbbb",
+    "bbbbbbbbbbbb",
+    "bbbbbbbbbbbb",
+    ".bbbbbbbbbb.",
+  ], eye: [3, 1], mouth: 6, ear: [4, 1] },
+  { name: "Froggy", rows: [
+    "..bbbb..bbbb..",
+    ".bbbbbbbbbbbb.",
+    "bbbbbbbbbbbbbb",
+    "bbbbbbbbbbbbbb",
+    "bbbbbbbbbbbbbb",
+    ".bbbbbbbbbbbb.",
+    "...bbbbbbbb...",
+  ], eye: [1, 2], mouth: 4, ear: [5, 2] },
+  { name: "Snouty", rows: [
+    "..bbbbbb..",
+    ".bbbbbbbb.",
+    "bbbbbbbbbb",
+    "bbbbbbbbbb",
+    "bbbbbbbbbb",
+    "bbbaaaabbb",
+    ".baaaaaab.",
+    ".baaaaaab.",
+    "..aaaaaa..",
+  ], eye: [3, 1], mouth: 6, ear: [3, 2] },
+  { name: "Dome", rows: [
+    "...bbbb...",
+    "..bbbbbb..",
+    ".bbbbbbbb.",
+    ".bbbbbbbb.",
+    "bbbbbbbbbb",
+    "bbbbbbbbbb",
+    "bbbbbbbbbb",
+    ".bbbbbbbb.",
+    "..bbbbbb..",
+  ], eye: [4, 1], mouth: 7, ear: [2, 3] },
+];
+
+const EYES = [
+  { name: "Beady", rows: ["wp", "pp"] },
+  { name: "Big", rows: ["www", "wpp", "wpp"] },
+  { name: "Grumpy", rows: ["k..", "wkk", "wpp"] },
+  { name: "Sleepy", rows: ["kkk", "wpp"], dy: 1 },
+  { name: "Glowing", rows: ["wg", "gg", "gg"] },
+  { name: "Bug", rows: ["gwg", "ggg", "ggg"] },
+  { name: "Cyclops", rows: [".ww.", "wwww", "wppw", "wppw", ".ww."], center: true, dy: -1 },
+];
+
+const MOUTHS = [
+  { name: "None", rows: null },
+  { name: "Smile", rows: ["k..k", ".kk."] },
+  { name: "Fangs", rows: ["kkkkkk", ".t..t."] },
+  { name: "Gape", rows: ["kkkk", "krrk", ".kk."] },
+  { name: "Beak", rows: ["hhhh", "hhhh", ".hh."], solid: true, dy: -1 },
+  { name: "Toothy", rows: ["kkkkkk", "kttttk", ".kkkk."] },
+  { name: "Flat", rows: ["kkkk"] },
+];
+
+const EARS = [
+  { name: "None", rows: null },
+  { name: "Cat", rows: ["b...", "bb..", "bab.", "baab", "bbbb"], anchor: [2, 4] },
+  { name: "Horns", rows: ["h...", "hh..", ".hh.", "..hh", "..hh"], anchor: [3, 4] },
+  { name: "Antennae", rows: ["aa..", "aa..", "..b.", "..b.", "...b"], anchor: [3, 4] },
+  { name: "Bunny", rows: [".bb", "bab", "bab", "bab", "bab", ".bb"], anchor: [2, 5] },
+  { name: "Floppy", rows: ["..bb", ".bbb", "bbab", "bab.", "bb.."], anchor: [3, 1], front: true, ox: 2 },
+  { name: "Fins", rows: ["a..", "aa.", "aaa", "aaa", "aaa"], anchor: [2, 4] },
+];
+
+const ARMS = [
+  { name: "None", rows: null },
+  { name: "Stubby", rows: [".bb", "bbb", "bbb", "bb."], anchor: [2, 0] },
+  { name: "Clawed", rows: ["..bb", ".bbb", "bbb.", "bb..", "h.h."], anchor: [3, 0] },
+  { name: "Pincers", rows: ["...bb", "..bb.", "aaa..", "a....", "aaa.."], anchor: [4, 0] },
+  { name: "Tentacle", rows: ["..bb", ".bb.", ".b..", ".bb.", "..b.", ".bb."], anchor: [3, 0] },
+  { name: "Raised", rows: ["bb.", "bb.", ".b.", ".bb", "..b"], anchor: [2, 4] },
+];
+
+const LEGS = [
+  { name: "None", rows: null },
+  { name: "Stumpy", rows: [".bbb", ".bbb", "bbbb"], anchor: [2, 0] },
+  { name: "Long", rows: [".bb", ".bb", ".bb", ".bb", "bbb"], anchor: [1, 0] },
+  { name: "Talons", rows: [".bb.", ".bb.", ".bh.", "h.hh"], anchor: [1, 0] },
+  { name: "Spindly", rows: ["..bbb", ".bb..", "bb...", "b...."], anchor: [4, 0] },
+  { name: "Hooves", rows: ["bbb", "bbb", ".bb", "hhh"], anchor: [1, 0] },
+];
+
+const TAILS = [
+  { name: "None", rows: null },
+  { name: "Curl", rows: ["..bbb.", ".bb.bb", ".b..bb", "bb.bb.", "bbb..."], anchor: [0, 4] },
+  { name: "Spiked", rows: ["....hh", "...bh.", "..bb..", "bbb...", "bb...."], anchor: [0, 4] },
+  { name: "Fluffy", rows: [".aaa.", "aaaaa", "aaaaa", ".bba.", "bb..."], anchor: [0, 4] },
+  { name: "Stinger", rows: ["...h.", "..hh.", "..bb.", "...bb", "..bb.", "bbb.."], anchor: [0, 5] },
+  { name: "Fin", rows: ["...a", "..aa", ".aaa", "bbaa", "bb.a"], anchor: [0, 3] },
+];
+
+const WINGS = [
+  { name: "None", rows: null },
+  { name: "Bat", rows: [".....hh", "...hhah", ".hhaaah", "haaaaah", "haaaaah", ".a.a.ah"], anchor: [6, 1] },
+  { name: "Feathered", rows: [".....a", "...aaa", ".aaaaa", "aaaaaa", "aaaaa.", "aaaa..", ".aa..."], anchor: [5, 1] },
+  { name: "Insect", rows: [".aaa.", "aaaaa", "aaaaa", "aaaaa", ".aaaa", "..aaa", "...aa"], anchor: [4, 2] },
+  { name: "Stubs", rows: ["..aa", ".aaa", "aaaa", "aa.."], anchor: [3, 1] },
+];
+
+const PALETTES = [
+  { name: "Moss",  skin: ["#a6e07a", "#62b04c", "#3b7a3a"], accent: ["#f8eab0", "#e3c46c", "#b38c40"], bone: ["#fff6e0", "#e8d4a8", "#b49870"], outline: "#1c2a1c", iris: "#ff5a5a" },
+  { name: "Ember", skin: ["#ffa877", "#e2583c", "#a5302d"], accent: ["#ffe596", "#f6b63e", "#c57a22"], bone: ["#fff3e2", "#e7cfb0", "#a98f6d"], outline: "#2b1215", iris: "#ffe14d" },
+  { name: "Tide",  skin: ["#97d8ff", "#4b95e0", "#2e5bad"], accent: ["#eafcff", "#b6e8f1", "#76b6cb"], bone: ["#ffffff", "#d7e3ee", "#97a8ba"], outline: "#131c34", iris: "#ffd23f" },
+  { name: "Plum",  skin: ["#dcaeff", "#9b5bd7", "#62389c"], accent: ["#ffcde9", "#f08cc0", "#bd558d"], bone: ["#fff5f0", "#ead6cc", "#b29b93"], outline: "#1f1331", iris: "#7dffb0" },
+  { name: "Slate", skin: ["#c3bfd2", "#837e9b", "#56516b"], accent: ["#f4b0ad", "#d36a79", "#984157"], bone: ["#fffbe6", "#e2d8b2", "#aa9e76"], outline: "#17151f", iris: "#ff4d6d" },
+  { name: "Sand",  skin: ["#f6d9a2", "#d5a35a", "#9b6c33"], accent: ["#fff5dc", "#f1ddb2", "#c9ad7f"], bone: ["#ffffff", "#ddd7cd", "#a39a8e"], outline: "#2a1c0f", iris: "#3fb6ff" },
+  { name: "Frost", skin: ["#ffffff", "#ccd7ef", "#8d9dc6"], accent: ["#a8eaff", "#5fbde8", "#3982b6"], bone: ["#ffffff", "#e6e6f0", "#a8a8bd"], outline: "#1a1f34", iris: "#ff8a3d" },
+  { name: "Toxic", skin: ["#ecf68a", "#b8d03a", "#7a931f"], accent: ["#a479df", "#6c45a9", "#46307a"], bone: ["#faffef", "#dfe8c8", "#a2ac88"], outline: "#191e0b", iris: "#ff3df2" },
+];
+
+const MARKS = ["None", "Spots", "Stripes"];
+const BACKDROPS = [["meadow", "Meadow"], ["cave", "Cave"], ["sky", "Sky"], ["dusk", "Dusk"], ["lab", "Clear"]];
+
+const SLOTS = [
+  { key: "body", label: "Body", list: BODIES },
+  { key: "head", label: "Head", list: HEADS },
+  { key: "eyes", label: "Eyes", list: EYES },
+  { key: "mouth", label: "Mouth", list: MOUTHS },
+  { key: "ears", label: "Top", list: EARS },
+  { key: "arms", label: "Arms", list: ARMS },
+  { key: "legs", label: "Legs", list: LEGS },
+  { key: "tail", label: "Tail", list: TAILS },
+  { key: "wings", label: "Wings", list: WINGS },
+];
+
+/* ------------------------------------------------------------------
+   Stitcher
+------------------------------------------------------------------- */
+const W = 64, C = 32, OUT = 32, GROUND = 30;
+const FIXED = { w: "#fbfbff", p: "#15121e", t: "#ffffff", r: "#ff6f91" };
+
+function layer(name, opts) { return Object.assign({ name, px: new Map(), shade: true, outline: true, mark: false }, opts || {}); }
+function put(L, x, y, ch, lx, ly) {
+  if (x < 0 || y < 0 || x >= W || y >= W) return;
+  L.px.set(y * W + x, { ch, lx, ly });
+}
+function stamp(L, rows, x, y, mirror) {
+  for (let r = 0; r < rows.length; r++) {
+    const row = rows[r];
+    for (let c = 0; c < row.length; c++) {
+      const ch = row[c];
+      if (ch === ".") continue;
+      put(L, x + c, y + r, ch, c, r);
+      if (mirror) put(L, 2 * C - 1 - (x + c), y + r, ch, row.length - 1 - c, r);
+    }
+  }
+}
+const wOf = s => s.rows[0].length, hOf = s => s.rows.length;
+
+function buildLayers(sel, frame) {
+  const body = BODIES[sel.body], head = HEADS[sel.head], eyes = EYES[sel.eyes], mouth = MOUTHS[sel.mouth];
+  const ears = EARS[sel.ears], arms = ARMS[sel.arms], legs = LEGS[sel.legs], tail = TAILS[sel.tail], wings = WINGS[sel.wings];
+  const bob = frame ? 1 : 0;
+  const bw = wOf(body);
+  const BX = C - bw / 2, BY0 = 12, BY = BY0 + bob;
+  const hw = wOf(head), hh = hOf(head);
+  const HX = C - hw / 2, HY = BY + 2 - hh;
+  const out = [];
+
+  if (wings.rows) {
+    const L = layer("wings");
+    stamp(L, wings.rows, BX + body.wing[0] - wings.anchor[0], BY0 + body.wing[1] - wings.anchor[1], true);
+    out.push(L);
+  }
+  if (tail.rows) {
+    const L = layer("tail", { mark: true });
+    stamp(L, tail.rows, BX + body.tail[0] - tail.anchor[0], BY + body.tail[1] - tail.anchor[1], false);
+    out.push(L);
+  }
+  let earLayer = null;
+  if (ears.rows) {
+    earLayer = layer("ears");
+    const ax = C - 1 - head.ear[0] - (ears.ox || 0);
+    stamp(earLayer, ears.rows, ax - ears.anchor[0], HY + head.ear[1] - ears.anchor[1], true);
+    if (!ears.front) out.push(earLayer);
+  }
+  if (legs.rows) {
+    const L = layer("legs");
+    stamp(L, legs.rows, BX + body.leg[0] - legs.anchor[0], BY0 + body.leg[1] - legs.anchor[1], true);
+    out.push(L);
+  }
+  { const L = layer("body", { mark: true }); stamp(L, body.rows, BX, BY, false); out.push(L); }
+  if (arms.rows) {
+    const L = layer("arms");
+    stamp(L, arms.rows, BX + body.arm[0] - arms.anchor[0], BY + body.arm[1] - arms.anchor[1], true);
+    out.push(L);
+  }
+  { const L = layer("head"); stamp(L, head.rows, HX, HY, false); out.push(L); }
+  if (earLayer && ears.front) out.push(earLayer);
+  {
+    const L = layer("eyes", { shade: false, outline: false });
+    const ey = HY + head.eye[0] + (eyes.dy || 0);
+    if (eyes.center) stamp(L, eyes.rows, C - wOf(eyes) / 2, ey, false);
+    else stamp(L, eyes.rows, C - head.eye[1] - wOf(eyes), ey, true);
+    out.push(L);
+  }
+  if (mouth.rows) {
+    const L = layer("mouth", { shade: !!mouth.solid, outline: !!mouth.solid });
+    stamp(L, mouth.rows, C - wOf(mouth) / 2, HY + head.mouth + (mouth.dy || 0), false);
+    out.push(L);
+  }
+  return out;
+}
+
+function markAt(mark, lx, ly) {
+  if (mark === 1) return ly % 3 === 1 && (lx + ly) % 4 === 0;
+  if (mark === 2) return ly % 3 === 2;
+  return false;
+}
+
+function colorFor(ch, tone, pal) {
+  switch (ch) {
+    case "b": return pal.skin[tone];
+    case "a": return pal.accent[tone];
+    case "h": return pal.bone[tone];
+    case "s": return pal.skin[2];
+    case "l": return pal.skin[0];
+    case "g": return pal.iris;
+    case "k": return pal.outline;
+    default: return FIXED[ch] || "#ff00ff";
+  }
+}
+
+function paintLayer(grid, L, pal, mark) {
+  const has = i => L.px.has(i);
+  const colors = [];
+  for (const [i, p] of L.px) {
+    let tone = 1;
+    if (L.shade && "bah".includes(p.ch)) {
+      const x = i % W;
+      const dn = !has(i + W), rt = x + 1 >= W || !has(i + 1);
+      const up = !has(i - W), lf = x === 0 || !has(i - 1);
+      if (dn || rt) tone = 2; else if (up || lf) tone = 0;
+    }
+    let ch = p.ch;
+    if (L.mark && ch === "b" && tone === 1 && markAt(mark, p.lx, p.ly)) ch = "a";
+    colors.push([i, colorFor(ch, tone, pal)]);
+  }
+  // Inner outline: where this part sits on top of an earlier part, trace a seam.
+  if (L.outline) {
+    for (const i of L.px.keys()) {
+      const x = i % W;
+      const ns = [i - W, i + W];
+      if (x > 0) ns.push(i - 1);
+      if (x < W - 1) ns.push(i + 1);
+      for (const n of ns) if (n >= 0 && n < W * W && !has(n) && grid[n] && !grid[n].o) grid[n] = { c: pal.outline, o: 1 };
+    }
+  }
+  for (const [i, c] of colors) grid[i] = { c, o: 0 };
+}
+
+function outerOutline(grid, col) {
+  const add = [];
+  for (let i = 0; i < W * W; i++) {
+    if (grid[i]) continue;
+    const x = i % W;
+    const ns = [i - W, i + W];
+    if (x > 0) ns.push(i - 1);
+    if (x < W - 1) ns.push(i + 1);
+    if (ns.some(n => n >= 0 && n < W * W && grid[n] && !grid[n].o)) add.push(i);
+  }
+  for (const i of add) grid[i] = { c: col, o: 1 };
+}
+
+function bbox(grid) {
+  let x0 = W, y0 = W, x1 = -1, y1 = -1;
+  for (let i = 0; i < W * W; i++) if (grid[i]) {
+    const x = i % W, y = (i / W) | 0;
+    if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+  }
+  return { x0, y0, x1, y1, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+}
+
+function composeGrid(sel, frame) {
+  const pal = PALETTES[sel.pal];
+  const grid = new Array(W * W).fill(null);
+  for (const L of buildLayers(sel, frame)) paintLayer(grid, L, pal, sel.mark);
+  outerOutline(grid, pal.outline);
+  return grid;
+}
+
+// Returns two 32x32 frames (rest + bob), sharing the rest frame's framing.
+function compose(sel) {
+  const g0 = composeGrid(sel, 0), g1 = composeGrid(sel, 1);
+  const b = bbox(g0);
+  const ox = Math.floor((OUT - b.w) / 2) - b.x0;
+  const oy = b.h <= GROUND + 1 ? GROUND - b.y1 : -b.y0;
+  const crop = g => {
+    const px = new Array(OUT * OUT).fill(null);
+    for (let i = 0; i < W * W; i++) if (g[i]) {
+      const x = (i % W) + ox, y = ((i / W) | 0) + oy;
+      if (x >= 0 && y >= 0 && x < OUT && y < OUT) px[y * OUT + x] = g[i].c;
+    }
+    return px;
+  };
+  return { frames: [crop(g0), crop(g1)], box: { x0: b.x0 + ox, x1: b.x1 + ox, y1: b.y1 + oy } };
+}
+
+// A single source sprite with its own shading + outline, for the bench and slot icons.
+function soloSprite(rows, pal, shaded) {
+  const grid = new Array(W * W).fill(null);
+  const L = layer("solo", { shade: shaded, outline: shaded });
+  stamp(L, rows, 20, 20, false);
+  paintLayer(grid, L, pal, 0);
+  if (shaded) outerOutline(grid, pal.outline);
+  const b = bbox(grid);
+  const px = [];
+  for (let y = b.y0; y <= b.y1; y++) for (let x = b.x0; x <= b.x1; x++) { const c = grid[y * W + x]; px.push(c ? c.c : null); }
+  return { w: b.w, h: b.h, px };
+}
+
+function hexRGB(h) { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
+function drawPx(canvas, px, w, h) {
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  const img = ctx.createImageData(w, h);
+  for (let i = 0; i < w * h; i++) {
+    const c = px[i];
+    if (!c) continue;
+    const [r, g, b] = hexRGB(c);
+    img.data.set([r, g, b, 255], i * 4);
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+/* ------------------------------------------------------------------
+   State, naming, codes
+------------------------------------------------------------------- */
+const KEYS = [...SLOTS.map(s => s.key), "pal", "mark"];
+const LISTS = [...SLOTS.map(s => s.list), PALETTES, MARKS];
+let sel = { body: 0, head: 0, eyes: 1, mouth: 1, ears: 1, arms: 1, legs: 1, tail: 0, wings: 0, pal: 0, mark: 0 };
+const locks = {};
+let bg = "meadow", frame = 0, current = null, recent = [];
+
+const toCode = s => KEYS.map(k => s[k].toString(36)).join("").toUpperCase();
+function fromCode(code) {
+  const c = String(code || "").trim().toLowerCase();
+  if (c.length !== KEYS.length) return null;
+  const s = {};
+  for (let i = 0; i < KEYS.length; i++) {
+    const v = parseInt(c[i], 36);
+    if (!(v >= 0 && v < LISTS[i].length)) return null;
+    s[KEYS[i]] = v;
+  }
+  return s;
+}
+function hash(str) { let h = 2166136261; for (const ch of str) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+const PRE = ["Glo", "Mur", "Skree", "Bram", "Zib", "Tok", "Fen", "Quil", "Puff", "Grub", "Nim", "Vex", "Bo", "Krell", "Sprock", "Lum", "Wib", "Dros"];
+const MID = ["", "", "a", "o", "i", "ble", "za", "ri", "mo"];
+const SUF = ["p", "x", "ok", "ling", "mander", "pup", "wick", "bit", "moth", "gor", "doo", "fin", "sprout", "bug"];
+function nameFor(code) {
+  const h = hash(code);
+  return PRE[h % PRE.length] + MID[(h >>> 5) % MID.length] + SUF[(h >>> 11) % SUF.length];
+}
+const rnd = n => Math.floor(Math.random() * n);
+
+/* ------------------------------------------------------------------
+   UI
+------------------------------------------------------------------- */
+const $ = id => document.getElementById(id);
+const LOCK_SVG = '<svg viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M5 2h6v1h1v4h1v7H3V7h1V3h1zm1 2v3h4V4zm1 5v3h2V9z"/></svg>';
+const UNLOCK_SVG = '<svg viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M5 2h6v1h1v2h-2V4H6v3h7v7H3V7h1V3h1zm2 7v3h2V9z"/></svg>';
+
+function setLockBtn(btn, on) { btn.setAttribute("aria-pressed", on ? "true" : "false"); btn.innerHTML = on ? LOCK_SVG : UNLOCK_SVG; }
+
+function buildSlots() {
+  const wrap = $("slots");
+  for (const s of SLOTS) {
+    const row = document.createElement("div");
+    row.className = "slot";
+    row.innerHTML = `<span class="lbl">${s.label}</span>
+      <button class="arrow" type="button" aria-label="Previous ${s.label.toLowerCase()}">&lsaquo;</button>
+      <div class="val"><canvas width="1" height="1" aria-hidden="true"></canvas><span></span><small></small></div>
+      <button class="arrow" type="button" aria-label="Next ${s.label.toLowerCase()}">&rsaquo;</button>
+      <button class="lock" type="button" aria-label="Lock ${s.label.toLowerCase()}"></button>`;
+    const [prev, next, lock] = row.querySelectorAll("button");
+    prev.onclick = () => { sel[s.key] = (sel[s.key] - 1 + s.list.length) % s.list.length; render(true); };
+    next.onclick = () => { sel[s.key] = (sel[s.key] + 1) % s.list.length; render(true); };
+    lock.onclick = () => { locks[s.key] = !locks[s.key]; setLockBtn(lock, locks[s.key]); };
+    setLockBtn(lock, false);
+    s.el = row;
+    wrap.appendChild(row);
+  }
+  const pl = $("palLock");
+  setLockBtn(pl, false);
+  pl.onclick = () => { locks.pal = !locks.pal; setLockBtn(pl, locks.pal); };
+}
+
+function buildPalettes() {
+  const wrap = $("pals");
+  PALETTES.forEach((p, i) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "pal";
+    const cols = [p.skin[0], p.skin[1], p.skin[2], p.accent[1], p.bone[1], p.iris];
+    b.innerHTML = `<div class="sw">${cols.map(c => `<i style="background:${c}"></i>`).join("")}</div><span>${p.name}</span>`;
+    b.onclick = () => { sel.pal = i; render(true); };
+    wrap.appendChild(b);
+  });
+  const mw = $("marks");
+  MARKS.forEach((m, i) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.textContent = m;
+    b.onclick = () => { sel.mark = i; render(true); };
+    mw.appendChild(b);
+  });
+  const bw = $("bgs");
+  BACKDROPS.forEach(([id, label]) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.textContent = label; b.dataset.bg = id;
+    b.onclick = () => { bg = id; applyBg(); };
+    bw.appendChild(b);
+  });
+}
+
+function applyBg() {
+  $("stage").dataset.bg = bg;
+  for (const b of $("bgs").children) b.setAttribute("aria-pressed", b.dataset.bg === bg ? "true" : "false");
+  try { localStorage.setItem("pm-bg", bg); } catch (e) {}
+}
+
+function drawShadow(box) {
+  const cv = $("shadow");
+  const ctx = cv.getContext("2d");
+  ctx.clearRect(0, 0, OUT, OUT);
+  if (bg === "lab") return;
+  ctx.fillStyle = "rgba(20, 14, 30, 0.22)";
+  const y = Math.min(OUT - 1, box.y1 + 1);
+  const x0 = box.x0 + 2, x1 = box.x1 - 2;
+  if (x1 > x0) { ctx.fillRect(x0, y, x1 - x0 + 1, 1); ctx.fillRect(x0 + 2, Math.min(OUT - 1, y + 1), Math.max(1, x1 - x0 - 3), 1); }
+}
+
+function updatePng() {
+  const big = $("bigToggle").checked;
+  const scale = big ? 8 : 1;
+  const cv = document.createElement("canvas");
+  cv.width = OUT * scale; cv.height = OUT * scale;
+  const ctx = cv.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage($("out"), 0, 0, cv.width, cv.height);
+  $("png").src = cv.toDataURL("image/png");
+  return cv;
+}
+
+function renderBench() {
+  const pal = PALETTES[sel.pal];
+  const bench = $("bench");
+  bench.innerHTML = "";
+  const order = ["head", "body", "eyes", "mouth", "ears", "arms", "legs", "tail", "wings"];
+  for (const key of order) {
+    const slot = SLOTS.find(s => s.key === key);
+    const part = slot.list[sel[key]];
+    if (!part.rows) continue;
+    const solid = !(key === "eyes" || (key === "mouth" && !part.solid));
+    const sp = soloSprite(part.rows, pal, solid);
+    const card = document.createElement("div");
+    card.className = "part";
+    const cv = document.createElement("canvas");
+    drawPx(cv, sp.px, sp.w, sp.h);
+    const scale = Math.max(2, Math.min(6, Math.floor(72 / Math.max(sp.w, sp.h))));
+    cv.style.width = sp.w * scale + "px"; cv.style.height = sp.h * scale + "px";
+    const pair = ["eyes", "ears", "arms", "legs", "wings"].includes(key) && !part.center;
+    card.innerHTML = `<div class="pc"></div><b>${slot.label}</b><small>${wOf(part)}×${hOf(part)}${pair ? " ×2" : ""}</small>`;
+    card.querySelector(".pc").appendChild(cv);
+    card.title = part.name;
+    bench.appendChild(card);
+  }
+}
+
+function renderSlots() {
+  const pal = PALETTES[sel.pal];
+  for (const s of SLOTS) {
+    const part = s.list[sel[s.key]];
+    const val = s.el.querySelector(".val");
+    const cv = val.querySelector("canvas");
+    if (part.rows) {
+      const solid = !(s.key === "eyes" || (s.key === "mouth" && !part.solid));
+      const sp = soloSprite(part.rows, pal, solid);
+      drawPx(cv, sp.px, sp.w, sp.h);
+      cv.style.width = "28px"; cv.style.height = "28px"; cv.style.objectFit = "contain";
+      cv.style.padding = "1px";
+    } else {
+      drawPx(cv, [null], 1, 1);
+    }
+    val.querySelector("span").textContent = part.name;
+    val.querySelector("small").textContent = part.rows ? `${wOf(part)}×${hOf(part)}` : "";
+  }
+  [...$("pals").children].forEach((b, i) => b.setAttribute("aria-pressed", i === sel.pal ? "true" : "false"));
+  [...$("marks").children].forEach((b, i) => b.setAttribute("aria-pressed", i === sel.mark ? "true" : "false"));
+}
+
+function paintFrame() {
+  if (!current) return;
+  const f = $("idleToggle").checked ? frame : 0;
+  drawPx($("out"), current.frames[f], OUT, OUT);
+}
+
+function render(record) {
+  current = compose(sel);
+  frame = 0;
+  paintFrame();
+  drawShadow(current.box);
+  const code = toCode(sel);
+  $("code").textContent = code;
+  $("name").textContent = nameFor(code);
+  $("specNo").textContent = "SPECIMEN No. " + String(hash(code) % 1000).padStart(3, "0");
+  $("out").setAttribute("aria-label", `${nameFor(code)}: ${SLOTS.map(s => s.list[sel[s.key]].name + " " + s.label.toLowerCase()).filter(t => !t.startsWith("None")).join(", ")}`);
+  renderSlots();
+  renderBench();
+  // png uses the rest frame
+  drawPx($("out"), current.frames[0], OUT, OUT);
+  updatePng();
+  paintFrame();
+  if (record) pushHistory();
+  try { localStorage.setItem("pm-sel", code); } catch (e) {}
+}
+
+function pushHistory() {
+  const code = toCode(sel);
+  recent = [code, ...recent.filter(c => c !== code)].slice(0, 12);
+  renderHistory();
+}
+function renderHistory() {
+  const wrap = $("recent");
+  wrap.innerHTML = "";
+  if (!recent.length) { wrap.innerHTML = '<p class="empty">Creatures you make appear here.</p>'; return; }
+  for (const code of recent) {
+    const s = fromCode(code);
+    if (!s) continue;
+    const b = document.createElement("button");
+    b.type = "button"; b.title = `${nameFor(code)} · ${code}`; b.setAttribute("aria-label", `Restore ${nameFor(code)}`);
+    const cv = document.createElement("canvas");
+    drawPx(cv, compose(s).frames[0], OUT, OUT);
+    b.appendChild(cv);
+    b.onclick = () => { sel = s; render(false); };
+    wrap.appendChild(b);
+  }
+}
+
+function randomize() {
+  for (const s of SLOTS) {
+    if (locks[s.key]) continue;
+    let v = rnd(s.list.length);
+    // Keep "None" from showing up too often on optional slots.
+    if (s.list[v].name === "None" && s.key !== "wings" && s.key !== "tail" && Math.random() < 0.6) v = 1 + rnd(s.list.length - 1);
+    if (s.key === "wings" && v !== 0 && Math.random() < 0.4) v = 0;
+    sel[s.key] = v;
+  }
+  if (!locks.pal) sel.pal = rnd(PALETTES.length);
+  if (Math.random() < 0.5) sel.mark = rnd(MARKS.length);
+  render(true);
+}
+function mutate() {
+  const open = SLOTS.filter(s => !locks[s.key]);
+  const pool = open.map(s => s.key).concat(locks.pal ? [] : ["pal"]);
+  if (!pool.length) { flash("saveStatus", "Everything is locked. Unlock a part to mutate it."); return; }
+  const key = pool[rnd(pool.length)];
+  const list = LISTS[KEYS.indexOf(key)];
+  let v = sel[key];
+  while (list.length > 1 && v === sel[key]) v = rnd(list.length);
+  sel[key] = v;
+  render(true);
+}
+
+function flash(id, msg) { const el = $(id); el.textContent = msg; clearTimeout(el._t); el._t = setTimeout(() => (el.textContent = ""), 3500); }
+
+async function copyText(text, statusId, okMsg) {
+  try { await navigator.clipboard.writeText(text); flash(statusId, okMsg); }
+  catch (e) {
+    const r = document.createRange(); r.selectNodeContents($("code"));
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    flash(statusId, "Copy was blocked here. The code is selected so you can copy it yourself.");
+  }
+}
+
+function wire() {
+  $("rand").onclick = randomize;
+  $("mutate").onclick = mutate;
+  $("copyCode").onclick = () => copyText(toCode(sel), "saveStatus", "Creature code copied.");
+  $("copyPng").onclick = () => {
+    const cv = updatePng();
+    try {
+      cv.toBlob(blob => {
+        navigator.clipboard.write([new ClipboardItem({ "image/png": blob })])
+          .then(() => flash("saveStatus", "Image copied."))
+          .catch(() => flash("saveStatus", "Copying images is blocked here. Right-click or long-press the picture to save it."));
+      });
+    } catch (e) { flash("saveStatus", "Copying images is blocked here. Right-click or long-press the picture to save it."); }
+  };
+  $("bigToggle").onchange = () => { drawPx($("out"), current.frames[0], OUT, OUT); updatePng(); paintFrame(); };
+  $("gridToggle").onchange = e => { $("gridOverlay").hidden = !e.target.checked; };
+  $("idleToggle").onchange = () => { frame = 0; paintFrame(); };
+  document.addEventListener("keydown", e => {
+    if (e.target.closest && e.target.closest("input, textarea")) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === "r" || e.key === "R") { e.preventDefault(); randomize(); }
+    if (e.key === "m" || e.key === "M") { e.preventDefault(); mutate(); }
+  });
+  const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduce) $("idleToggle").checked = false;
+  setInterval(() => { if ($("idleToggle").checked) { frame ^= 1; paintFrame(); } }, 480);
+}
+
+function start(data) {
+  buildSlots();
+  buildPalettes();
+  wire();
+  try { bg = localStorage.getItem("pm-bg") || bg; } catch (e) {}
+  if (!BACKDROPS.some(b => b[0] === bg)) bg = "meadow";
+  applyBg();
+  const fromHash = fromCode(location.hash.slice(1));
+  if (data && data.sel) { sel = data.sel; recent = data.recent || []; }
+  else if (fromHash) sel = fromHash;
+  else {
+    // A few hand-picked examples so the page opens with a gallery.
+    recent = ["3011120000", "1243424120", "0465313304", "2425250312", "4352041142"].map(c => c + "0").filter(fromCode);
+    sel = { body: 2, head: 3, eyes: 1, mouth: 2, ears: 2, arms: 2, legs: 1, tail: 2, wings: 1, pal: 4, mark: 0 };
+  }
+  render(true);
+  window.claude?.hot?.snapshot?.(() => ({ sel, recent }));
+}
+
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
