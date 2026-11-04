@@ -45,3 +45,12 @@ Randomize is stingy with extra parts. The odds live in `PAIR_ODDS` and `HAVE_ODD
 | Magic | 7% (Sigils markings 3%) |
 
 Locked parts are respected: the pair outcome is re-rolled until it agrees with whatever is locked.
+
+## Breeding
+
+The page opens with a pen of six random bugs, the first two set as parents A and B, and one clutch already hatched. Click a bug in the pen to put it in the highlighted parent slot, then **Breed a clutch** (or press B) to hatch four children.
+
+- Each slot, the palette and the markings come from one parent or the other at random.
+- Legs travel with wings, and jaws with antennae, so a child keeps one parent's body plan and the rarity rules hold.
+- Each child has a 50% chance of no mutation, 32% of one and 18% of two. A mutation picks a part (or the palette) that neither parent has.
+- Click a child to see it on the stage, with which parent each trait came from and what is new. **Add shown bug to pen** keeps it for further breeding (up to 12 bugs).
