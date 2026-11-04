@@ -179,7 +179,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 <div class="wrap">
   <header class="top">
     <h1>Pixel Menagerie</h1>
-    <p>Creepy hive bugs with too many eyes and too many spikes, seen from above. Each is stitched from up to ten tiny sprites into one shaded, outlined 32×32 sprite.</p>
+    <p>Creepy, arcane hive bugs with too many eyes, spikes and tentacles, seen from above. Each is stitched from up to eleven tiny sprites into one shaded, outlined 32×32 sprite.</p>
   </header>
 
   <div class="lab">
@@ -214,7 +214,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 
       <section class="card" aria-label="Parts on the bench">
         <h3>Parts on the bench</h3>
-        <p class="note">These are the source sprites, at their real pixel sizes. Paired parts (eyes, antennae, legs, spines, wings) are drawn once as the left half and mirrored. The stitcher layers them back to front, adds shading from the top left, then traces one outline around the whole silhouette.</p>
+        <p class="note">These are the source sprites, at their real pixel sizes. Paired parts (eyes, antennae, legs, spines, wings) are drawn once as the left half and mirrored. The stitcher layers them back to front, adds shading from the top left, then traces one outline around the whole silhouette. Magic is drawn last and left unoutlined so it reads as light.</p>
         <div class="bench" id="bench"></div>
       </section>
     </div>
@@ -327,6 +327,7 @@ const EYES = [
   { name: "Crown", rows: ["g.g.", ".g.g"] },
   { name: "Swarm", rows: ["g.g", "...", ".g.", "g.g"] },
   { name: "Third eye", rows: ["ee", "ee"], center: true },
+  { name: "Radiant", rows: ["nm", "mm"] },
 ];
 
 const JAWS = [
@@ -336,6 +337,7 @@ const JAWS = [
   { name: "Talons", rows: ["hh........hh", ".hh......hh.", "..hh....hh..", "...hhhhhh..."] },
   { name: "Fangs", rows: ["k..k", "h..h", "hhhh"] },
   { name: "Feelers", rows: ["k.kk.k", "k.kk.k", ".kkkk."], flat: true },
+  { name: "Tentacles", rows: ["a.a..a.a", ".a.aa.a.", ".a.aa.a.", "a..aa..a"] },
 ];
 
 const ANTENNAE = [
@@ -346,6 +348,7 @@ const ANTENNAE = [
   { name: "Feathery", rows: ["k.k.", "kkk.", ".kkk", "..kk"], anchor: [3, 3] },
   { name: "Whip", rows: ["kk...", "k....", ".k...", "..k..", "...kk"], anchor: [4, 4] },
   { name: "Eyestalks", rows: ["gg..", "gg..", "..k.", "...k"], anchor: [3, 3] },
+  { name: "Tendrils", rows: ["aa..", "a.a.", ".a.a", "...a"], anchor: [3, 3] },
 ];
 
 const THORAXES = [
@@ -439,6 +442,7 @@ const LEGS = [
   { name: "Scythes", rows: ["h......", "hh.....", ".hh....", "..hhkkk", ".......", "kkkkkkk", ".......", "...kkkk", "..k....", ".k....."], anchor: [6, 5] },
   { name: "Hooked", rows: ["kk...", ".k...", "..kkk", "k....", ".kkkk", "k....", "..kkk", ".k...", "kk..."], anchor: [4, 4] },
   { name: "Stilts", rows: ["k.....", "k.....", ".k....", "..kkkk", "......", "kkkkkk", "......", "..kkkk", ".k....", "k.....", "k....."], anchor: [5, 5] },
+  { name: "Tentacles", rows: ["aa......", "..a.....", "...aaaaa", "........", "........", "aa...aaa", "..aaa...", "........", "........", "...aaaaa", "..a.....", "aa......"], anchor: [7, 5] },
 ];
 
 // Spines attach to the thorax shoulders ("thorax") or along the abdomen's sides ("abdomen");
@@ -471,6 +475,18 @@ const WINGS = [
   { name: "Shell", rows: ["...bb", "..bbb", ".bbbb", ".bbbb", "bbbb.", "bbbb.", "bbb..", "bb..."], anchor: [4, 0] },
   { name: "Veined", rows: ["h.....", ".haaaa", "ahaaka", "aahkaa", "aakhaa", ".a.ah.", "....h."], anchor: [5, 1] },
   { name: "Tattered", rows: ["..aaaaa", ".aaaaaa", "aaaaaaa", "a.aa.aa", "...a..a"], anchor: [6, 0] },
+  { name: "Ethereal", rows: [
+    ".mmmm....",
+    "mmnmmmm..",
+    "mnmmmmmm.",
+    "mmnnmmmmm",
+    ".mmmnmmmm",
+    "...mmmnmm",
+    "..mmmmnmm",
+    ".mnmmmmm.",
+    ".mmnmmm..",
+    "..mmm....",
+  ], anchor: [8, 2], glow: true },
 ];
 
 const TAILS = [
@@ -480,6 +496,36 @@ const TAILS = [
   { name: "Spinnerets", rows: [".hh.", "h..h"] },
   { name: "Lantern", rows: [".yy.", "yyyy", ".yy."], dy: -2 },
   { name: "Pincers", rows: [".h..h.", "h....h", "h....h", ".h..h."] },
+  { name: "Tendrils", rows: ["..aa..", ".a..a.", "a....a", "a....a", ".a..a."] },
+  { name: "Lash", rows: ["aa", ".a", "a.", ".a"] },
+];
+
+// Light magic. Shapes: "+" sparkle, "o" orb, "." mote, "*" bright mote.
+function field(w, h, pts) {
+  const g = Array.from({ length: h }, () => Array(w).fill("."));
+  const set = (x, y, ch) => { if (x >= 0 && y >= 0 && x < w && y < h && (g[y][x] === "." || ch === "n")) g[y][x] = ch; };
+  for (const [x, y, t] of pts) {
+    if (t === "+") { set(x, y, "n"); set(x - 1, y, "m"); set(x + 1, y, "m"); set(x, y - 1, "m"); set(x, y + 1, "m"); }
+    else if (t === "o") { set(x, y, "n"); set(x + 1, y, "m"); set(x, y + 1, "m"); set(x + 1, y + 1, "m"); }
+    else set(x, y, t === "*" ? "n" : "m");
+  }
+  return g.map(r => r.join(""));
+}
+function ring(rx, ry, n) {
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    pts.push([Math.round(rx + rx * Math.cos(a)), Math.round(ry + ry * Math.sin(a)), i % 3 === 0 ? "*" : "."]);
+  }
+  return field(rx * 2 + 1, ry * 2 + 1, pts);
+}
+const AURAS = [
+  { name: "None", rows: null },
+  { name: "Halo", rows: ["..mmmmmm..", ".mn....nm.", "..mmmmmm.."], at: "halo" },
+  { name: "Sparkles", rows: field(26, 26, [[2, 4, "+"], [23, 6, "+"], [3, 18, "."], [22, 20, "+"], [13, 0, "*"], [1, 11, "."], [24, 14, "*"], [6, 24, "+"], [18, 25, "."]]) },
+  { name: "Wisps", rows: field(26, 20, [[0, 3, "o"], [24, 5, "o"], [1, 15, "o"], [23, 13, "o"], [12, 19, "*"]]) },
+  { name: "Orbit", rows: ring(12, 13, 18) },
+  { name: "Radiance", rows: null, radiance: true },
 ];
 
 const PALETTES = [
@@ -493,7 +539,7 @@ const PALETTES = [
   { name: "Abyss",  skin: ["#4e9a98", "#1e5a60", "#0e3038"], accent: ["#9affe0", "#3ad6b0", "#16806a"], bone: ["#e4f0e8", "#a8c4b8", "#647e74"], outline: "#041214", iris: "#9affe0" },
 ];
 
-const MARKS = ["None", "Spots", "Stripes", "Pustules"];
+const MARKS = ["None", "Spots", "Stripes", "Pustules", "Sigils"];
 const BACKDROPS = [["lavender", "Lavender"], ["leaf", "Leaf"], ["soil", "Soil"], ["night", "Night"], ["lab", "Clear"]];
 
 const SLOTS = [
@@ -507,6 +553,7 @@ const SLOTS = [
   { key: "spines", label: "Spines", list: SPINES, pair: true },
   { key: "wings", label: "Wings", list: WINGS, pair: true },
   { key: "tail", label: "Tail", list: TAILS },
+  { key: "aura", label: "Magic", list: AURAS, flat: true },
 ];
 
 /* ------------------------------------------------------------------
@@ -538,7 +585,7 @@ const wOf = s => s.rows[0].length, hOf = s => s.rows.length;
 function buildLayers(sel, frame) {
   const head = HEADS[sel.head], eyes = EYES[sel.eyes], jaws = JAWS[sel.jaws], ant = ANTENNAE[sel.antennae];
   const thx = THORAXES[sel.thorax], abd = ABDOMENS[sel.abdomen], legs = LEGS[sel.legs], wings = WINGS[sel.wings], tail = TAILS[sel.tail];
-  const spines = SPINES[sel.spines];
+  const spines = SPINES[sel.spines], aura = AURAS[sel.aura];
   const f = frame ? 1 : 0;
   const TX = C - wOf(thx) / 2, TY = 24;
   const HX = C - wOf(head) / 2, HY = TY - hOf(head) + 1;
@@ -558,7 +605,7 @@ function buildLayers(sel, frame) {
   }
   // Wings flutter one pixel outward.
   if (wings.rows) {
-    const L = layer("wings");
+    const L = layer("wings", { glow: !!wings.glow });
     stamp(L, wings.rows, TX + thx.wing[0] - wings.anchor[0] - f, TY + thx.wing[1] - wings.anchor[1], true);
     out.push(L);
   }
@@ -594,6 +641,13 @@ function buildLayers(sel, frame) {
     else stamp(L, eyes.rows, HX + head.eye[1], ey, true);
     out.push(L);
   }
+  // Light magic floats on top and is never outlined.
+  if (aura.rows) {
+    const L = layer("aura", { glow: true, outline: false });
+    if (aura.at === "halo") stamp(L, aura.rows, C - wOf(aura) / 2, HY - 4, false);
+    else stamp(L, aura.rows, C - Math.floor(wOf(aura) / 2), TY + 4 - Math.floor(hOf(aura) / 2), false);
+    out.push(L);
+  }
   return out;
 }
 
@@ -601,9 +655,19 @@ function markAt(mark, lx, ly) {
   if (mark === 1) { const band = Math.floor(ly / 3); return ly % 3 !== 0 && ((lx + band * 3) % 6 === 1 || (lx + band * 3) % 6 === 2) ? "a" : null; }
   if (mark === 2) return ly % 3 === 2 ? "a" : null;
   if (mark === 3) return (lx * 7 + ly * 5) % 11 === 0 ? "g" : null;
+  if (mark === 4) { const a = lx % 5, b = ly % 5; return (a === 2 && b >= 1 && b <= 3) || (b === 2 && a >= 1 && a <= 3) ? (a === 2 && b === 2 ? "n" : "m") : null; }
   return null;
 }
 
+function mix(a, b, t) {
+  const A = hexRGB(a), B = hexRGB(b);
+  return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, "0")).join("");
+}
+const magicCache = new Map();
+function magicTones(pal) {
+  if (!magicCache.has(pal)) magicCache.set(pal, [mix(pal.iris, "#ffffff", 0.55), mix(pal.iris, "#ffffff", 0.2), pal.iris, mix(pal.iris, "#ffffff", 0.85)]);
+  return magicCache.get(pal);
+}
 function colorFor(ch, tone, pal) {
   switch (ch) {
     case "b": return pal.skin[tone];
@@ -615,6 +679,8 @@ function colorFor(ch, tone, pal) {
     case "k": return pal.outline;
     case "c": return CLEAR[tone];
     case "y": return GLOW[tone];
+    case "m": return magicTones(pal)[tone];
+    case "n": return magicTones(pal)[3];
     default: return FIXED[ch] || "#ff00ff";
   }
 }
@@ -624,7 +690,7 @@ function paintLayer(grid, L, pal, mark) {
   const colors = [];
   for (const [i, p] of L.px) {
     let tone = 1;
-    if (L.shade && "bahcy".includes(p.ch)) {
+    if (L.shade && "bahcym".includes(p.ch)) {
       const x = i % W;
       const dn = !has(i + W), rt = x + 1 >= W || !has(i + 1);
       const up = !has(i - W), lf = x === 0 || !has(i - 1);
@@ -644,7 +710,8 @@ function paintLayer(grid, L, pal, mark) {
       for (const n of ns) if (n >= 0 && n < W * W && !has(n) && grid[n] && !grid[n].o) grid[n] = { c: pal.outline, o: 1 };
     }
   }
-  for (const [i, c, line] of colors) grid[i] = { c, o: line ? 1 : 0 };
+  // o: 0 = solid (gets outlined), 1 = outline or thin line, 2 = light (never outlined)
+  for (const [i, c, line] of colors) grid[i] = { c, o: L.glow ? 2 : line ? 1 : 0 };
 }
 
 function outerOutline(grid, col) {
@@ -674,7 +741,24 @@ function composeGrid(sel, frame) {
   const grid = new Array(W * W).fill(null);
   for (const L of buildLayers(sel, frame)) paintLayer(grid, L, pal, sel.mark);
   outerOutline(grid, pal.outline);
+  if (AURAS[sel.aura].radiance) radiate(grid, pal);
   return grid;
+}
+
+// A soft ring of light just outside the outline.
+function radiate(grid, pal) {
+  const t = magicTones(pal), add = [];
+  for (let i = 0; i < W * W; i++) {
+    if (grid[i]) continue;
+    const x = i % W;
+    let near = 0;
+    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+      const nx = x + dx, n = i + dx + dy * W;
+      if (nx >= 0 && nx < W && n >= 0 && n < W * W && grid[n] && grid[n].o === 1) near++;
+    }
+    if (near) add.push([i, near > 1 ? t[1] + "e0" : t[0] + "90"]);
+  }
+  for (const [i, c] of add) grid[i] = { c, o: 2 };
 }
 
 // Returns the finished 32x32 sprite, centred.
@@ -707,7 +791,7 @@ function soloSprite(rows, pal, shaded) {
   return { w: b.w, h: b.h, px };
 }
 
-function hexRGB(h) { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
+function hexRGB(h) { const n = parseInt(h.slice(1, 7), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
 function drawPx(canvas, px, w, h) {
   canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext("2d");
@@ -716,7 +800,7 @@ function drawPx(canvas, px, w, h) {
     const c = px[i];
     if (!c) continue;
     const [r, g, b] = hexRGB(c);
-    img.data.set([r, g, b, 255], i * 4);
+    img.data.set([r, g, b, c.length > 7 ? parseInt(c.slice(7, 9), 16) : 255], i * 4);
   }
   ctx.putImageData(img, 0, 0);
 }
@@ -925,7 +1009,8 @@ function randomize() {
     if (locks[s.key]) continue;
     let v = rnd(s.list.length);
     // Keep "None" from showing up too often on optional slots.
-    if (s.list[v].name === "None" && s.key !== "wings" && s.key !== "tail" && Math.random() < 0.8) v = 1 + rnd(s.list.length - 1);
+    if (s.list[v].name === "None" && s.key !== "wings" && s.key !== "tail" && s.key !== "aura" && Math.random() < 0.8) v = 1 + rnd(s.list.length - 1);
+    if (s.key === "aura" && Math.random() < 0.45) v = 0;
     sel[s.key] = v;
   }
   if (!locks.pal) sel.pal = rnd(PALETTES.length);
@@ -992,17 +1077,17 @@ function start(data) {
   else {
     // A few hand-picked examples so the page opens with a gallery.
     // Hand-picked examples so the page opens with a gallery.
-    const ex = (head, eyes, jaws, antennae, thorax, abdomen, legs, spines, wings, tail, pal, mark) =>
-      ({ head, eyes, jaws, antennae, thorax, abdomen, legs, spines, wings, tail, pal, mark });
+    const ex = (head, eyes, jaws, antennae, thorax, abdomen, legs, spines, wings, tail, aura, pal, mark) =>
+      ({ head, eyes, jaws, antennae, thorax, abdomen, legs, spines, wings, tail, aura, pal, mark });
     recent = [
-      ex(5, 4, 3, 0, 4, 4, 3, 1, 0, 1, 0, 3),  // brood beast
-      ex(3, 6, 4, 6, 3, 2, 2, 3, 0, 3, 3, 0),  // many-eyed spider
-      ex(2, 2, 1, 5, 2, 6, 1, 0, 3, 0, 1, 0),  // acid dragonfly
-      ex(4, 5, 2, 3, 5, 5, 4, 4, 5, 5, 2, 0),  // plated hunter
-      ex(0, 1, 5, 1, 0, 0, 1, 5, 4, 0, 6, 1),  // blood beetle
-      ex(1, 7, 4, 4, 1, 1, 5, 2, 6, 4, 4, 0),  // rot moth
+      ex(3, 4, 6, 7, 3, 4, 6, 3, 0, 7, 4, 3, 0),  // tentacled seer
+      ex(5, 8, 0, 1, 4, 5, 3, 1, 7, 1, 1, 7, 4),  // haloed sentinel
+      ex(2, 2, 1, 5, 2, 6, 1, 0, 3, 0, 2, 1, 0),  // acid dragonfly
+      ex(0, 4, 3, 0, 0, 2, 2, 3, 0, 3, 0, 3, 3),  // brood spider
+      ex(1, 7, 4, 4, 1, 1, 5, 2, 6, 4, 3, 4, 0),  // rot moth with wisps
+      ex(4, 5, 2, 3, 5, 5, 4, 4, 5, 5, 5, 2, 0),  // radiant hunter
     ].map(toCode);
-    sel = ex(3, 4, 3, 1, 3, 4, 3, 1, 5, 1, 0, 0);
+    sel = ex(3, 8, 6, 7, 4, 4, 6, 1, 7, 7, 4, 3, 4);
   }
   render(true);
   window.claude?.hot?.snapshot?.(() => ({ sel, recent }));
