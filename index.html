@@ -80,7 +80,7 @@ h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em; color: 
   background-image:
     linear-gradient(to right, rgba(20, 16, 30, 0.16) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(20, 16, 30, 0.16) 1px, transparent 1px);
-  background-size: 3.125% 3.125%;
+  background-size: 1.5625% 1.5625%;
 }
 .stage .dims { position: absolute; right: 6px; bottom: 4px; font-family: var(--mono); font-size: 11px; color: rgba(20,16,30,0.55); }
 .stage[data-bg="night"] .dims, .stage[data-bg="soil"] .dims { color: rgba(255,255,255,0.55); }
@@ -153,7 +153,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 .part {
   background: var(--chip); border-radius: 4px; padding: 10px 8px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px;
 }
-.part .pc { height: 72px; display: grid; place-items: center; }
+.part .pc { height: 104px; display: grid; place-items: center; }
 .part canvas { image-rendering: pixelated; }
 .part b { font-family: var(--display); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
 .part small { font-family: var(--mono); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -179,7 +179,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 <div class="wrap">
   <header class="top">
     <h1>Pixel Menagerie</h1>
-    <p>Creepy, arcane hive bugs with too many eyes, spikes and tentacles, seen from above. Each is stitched from up to eleven tiny sprites into one shaded, outlined 32×32 sprite.</p>
+    <p>Creepy, arcane hive bugs with too many eyes, spikes and tentacles, seen from above. Each is stitched from up to eleven tiny sprites into one shaded, outlined 64×64 sprite.</p>
   </header>
 
   <div class="lab">
@@ -196,9 +196,9 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
           </div>
         </div>
         <div class="stage" id="stage" data-bg="lavender">
-          <canvas id="out" width="32" height="32" role="img" aria-label="Generated creature sprite"></canvas>
+          <canvas id="out" width="64" height="64" role="img" aria-label="Generated creature sprite"></canvas>
           <div class="grid" id="gridOverlay" hidden></div>
-          <div class="dims">32×32</div>
+          <div class="dims">64×64</div>
         </div>
         <div class="row between">
           <div class="chips" id="bgs" role="group" aria-label="Backdrop"></div>
@@ -237,12 +237,12 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
       <section class="card" aria-label="Save">
         <h3>Save sprite</h3>
         <div class="save">
-          <img id="png" alt="Creature sprite, 32 by 32 pixels, scaled up">
+          <img id="png" alt="Creature sprite, 64 by 64 pixels, scaled up">
           <div class="txt">
-            <p class="note">Right-click or long-press the picture to save it. It is a 256×256 PNG with a transparent background (8× the 32×32 sprite).</p>
+            <p class="note">Right-click or long-press the picture to save it. It is a 256×256 PNG with a transparent background (4× the 64×64 sprite).</p>
             <div class="row">
               <button class="btn small" id="copyPng" type="button">Copy image</button>
-              <label class="toggle"><input type="checkbox" id="bigToggle" checked> 8× size</label>
+              <label class="toggle"><input type="checkbox" id="bigToggle" checked> 4× size</label>
             </div>
             <div class="status" id="saveStatus" aria-live="polite"></div>
           </div>
@@ -557,9 +557,54 @@ const SLOTS = [
 ];
 
 /* ------------------------------------------------------------------
+   Double resolution. The parts above are written as small sketches;
+   at load each one is redrawn at 2x: solid areas with Scale2x (which
+   rounds corners instead of making 2x2 blocks), dark "k" lines as
+   1px lines through the doubled points, and every anchor doubled.
+------------------------------------------------------------------- */
+const SCALE = 2;
+function redraw(rows) {
+  const h = rows.length, w = rows[0].length;
+  const at = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? "." : (rows[y][x] === "k" ? "." : rows[y][x]);
+  const out = Array.from({ length: h * 2 }, () => Array(w * 2).fill("."));
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const P = at(x, y), A = at(x, y - 1), B = at(x + 1, y), L = at(x - 1, y), D = at(x, y + 1);
+    let e0 = P, e1 = P, e2 = P, e3 = P;
+    if (L === A && L !== D && A !== B) e0 = A;
+    if (A === B && A !== L && B !== D) e1 = B;
+    if (D === L && D !== B && L !== A) e2 = L;
+    if (B === D && B !== A && D !== L) e3 = D;
+    out[2 * y][2 * x] = e0; out[2 * y][2 * x + 1] = e1;
+    out[2 * y + 1][2 * x] = e2; out[2 * y + 1][2 * x + 1] = e3;
+  }
+  const isK = (x, y) => x >= 0 && y >= 0 && x < w && y < h && rows[y][x] === "k";
+  const plot = (x, y) => { if (out[y] && (out[y][x] === "." || out[y][x] === "k")) out[y][x] = "k"; };
+  const line = (x0, y0, x1, y1) => {
+    const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+    for (let t = 0; t <= n; t++) plot(Math.round(x0 + (x1 - x0) * t / n), Math.round(y0 + (y1 - y0) * t / n));
+  };
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (!isK(x, y)) continue;
+    let linked = false;
+    for (const [dx, dy] of [[1, 0], [0, 1], [1, 1], [-1, 1], [-1, 0], [0, -1], [-1, -1], [1, -1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (isK(nx, ny)) { linked = true; if (dy > 0 || (dy === 0 && dx > 0)) line(2 * x, 2 * y, 2 * nx, 2 * ny); }
+      else if (nx >= 0 && ny >= 0 && nx < w && ny < h && rows[ny][nx] !== ".") line(2 * x, 2 * y, 2 * nx + (dx < 0 ? 1 : 0), 2 * ny + (dy < 0 ? 1 : 0));
+    }
+    if (!linked) { plot(2 * x, 2 * y); plot(2 * x + 1, 2 * y); plot(2 * x, 2 * y + 1); plot(2 * x + 1, 2 * y + 1); }
+  }
+  return out.map(r => r.join(""));
+}
+for (const slot of SLOTS) for (const part of slot.list) {
+  if (part.rows) part.sketch = part.rows, part.rows = redraw(part.rows);
+  for (const k of ["anchor", "eye", "ant", "leg", "wing", "spike"]) if (part[k]) part[k] = part[k].map(v => v * SCALE);
+  if (part.dy) part.dy *= SCALE;
+}
+
+/* ------------------------------------------------------------------
    Stitcher
 ------------------------------------------------------------------- */
-const W = 64, C = 32, OUT = 32;
+const W = 128, C = 64, OUT = 64;
 const FIXED = { w: "#fbfbff", p: "#15121e", e: "#ff3046" };
 const CLEAR = ["#f4fbff", "#d2e8f6", "#a6c4dc"];   // glassy wings
 const GLOW = ["#fdffc8", "#f0f55a", "#b8c42a"];    // lantern
@@ -587,9 +632,9 @@ function buildLayers(sel, frame) {
   const thx = THORAXES[sel.thorax], abd = ABDOMENS[sel.abdomen], legs = LEGS[sel.legs], wings = WINGS[sel.wings], tail = TAILS[sel.tail];
   const spines = SPINES[sel.spines], aura = AURAS[sel.aura];
   const f = frame ? 1 : 0;
-  const TX = C - wOf(thx) / 2, TY = 24;
-  const HX = C - wOf(head) / 2, HY = TY - hOf(head) + 1;
-  const AX = C - wOf(abd) / 2, AY = TY + hOf(thx) - 1;
+  const TX = C - wOf(thx) / 2, TY = 48;
+  const HX = C - wOf(head) / 2, HY = TY - hOf(head) + 2;
+  const AX = C - wOf(abd) / 2, AY = TY + hOf(thx) - 2;
   const out = [];
 
   // Legs scuttle: on the second frame the left legs step down and the right legs step up.
@@ -624,18 +669,18 @@ function buildLayers(sel, frame) {
   }
   if (tail.rows) {
     const L = layer("tail");
-    stamp(L, tail.rows, C - wOf(tail) / 2, AY + hOf(abd) + (tail.dy || 0), false);
+    stamp(L, tail.rows, C - wOf(tail) / 2, AY + hOf(abd) - 1 + (tail.dy || 0), false);
     out.push(L);
   }
   { const L = layer("thorax"); stamp(L, thx.rows, TX, TY, false); out.push(L); }
   if (jaws.rows) {
     const L = layer("jaws", { shade: !jaws.flat, outline: !jaws.flat });
-    stamp(L, jaws.rows, C - wOf(jaws) / 2, HY - hOf(jaws) + 1, false);
+    stamp(L, jaws.rows, C - wOf(jaws) / 2, HY - hOf(jaws) + 2, false);
     out.push(L);
   }
   { const L = layer("head"); stamp(L, head.rows, HX, HY, false); out.push(L); }
   {
-    const L = layer("eyes", { shade: false, outline: false });
+    const L = layer("eyes", { shade: false, outline: false, glint: true });
     const ey = HY + head.eye[0];
     if (eyes.center) stamp(L, eyes.rows, C - wOf(eyes) / 2, ey, false);
     else stamp(L, eyes.rows, HX + head.eye[1], ey, true);
@@ -644,8 +689,8 @@ function buildLayers(sel, frame) {
   // Light magic floats on top and is never outlined.
   if (aura.rows) {
     const L = layer("aura", { glow: true, outline: false });
-    if (aura.at === "halo") stamp(L, aura.rows, C - wOf(aura) / 2, HY - 4, false);
-    else stamp(L, aura.rows, C - Math.floor(wOf(aura) / 2), TY + 4 - Math.floor(hOf(aura) / 2), false);
+    if (aura.at === "halo") stamp(L, aura.rows, C - wOf(aura) / 2, HY - 8, false);
+    else stamp(L, aura.rows, C - Math.floor(wOf(aura) / 2), TY + 8 - Math.floor(hOf(aura) / 2), false);
     out.push(L);
   }
   return out;
@@ -692,12 +737,14 @@ function paintLayer(grid, L, pal, mark) {
     let tone = 1;
     if (L.shade && "bahcym".includes(p.ch)) {
       const x = i % W;
-      const dn = !has(i + W), rt = x + 1 >= W || !has(i + 1);
+      const dn = !has(i + W) || !has(i + 2 * W), rt = x + 1 >= W || !has(i + 1);
       const up = !has(i - W), lf = x === 0 || !has(i - 1);
       if (dn || rt) tone = 2; else if (up || lf) tone = 0;
     }
+    // A glint in the top-left corner of each eye.
+    if (L.glint && "gpe".includes(p.ch) && !has(i - W) && !has(i - 1) && has(i + 1) && has(i + W)) { colors.push([i, p.ch === "p" ? "#ffffff" : "#fffbe8", false]); continue; }
     let ch = p.ch;
-    if (L.mark && ch === "b" && tone === 1) ch = markAt(mark, p.lx, p.ly) || ch;
+    if (L.mark && ch === "b" && tone === 1) ch = markAt(mark, p.lx >> 1, p.ly >> 1) || ch;
     colors.push([i, colorFor(ch, tone, pal), ch === "k"]);
   }
   // Inner outline: where this part sits on top of an earlier part, trace a seam.
@@ -761,7 +808,7 @@ function radiate(grid, pal) {
   for (const [i, c] of add) grid[i] = { c, o: 2 };
 }
 
-// Returns the finished 32x32 sprite, centred.
+// Returns the finished 64x64 sprite, centred.
 function compose(sel) {
   const g0 = composeGrid(sel, 0);
   const b = bbox(g0);
@@ -902,7 +949,7 @@ function applyBg() {
 
 function updatePng() {
   const big = $("bigToggle").checked;
-  const scale = big ? 8 : 1;
+  const scale = big ? 4 : 1;
   const cv = document.createElement("canvas");
   cv.width = OUT * scale; cv.height = OUT * scale;
   const ctx = cv.getContext("2d");
@@ -926,7 +973,7 @@ function renderBench() {
     card.className = "part";
     const cv = document.createElement("canvas");
     drawPx(cv, sp.px, sp.w, sp.h);
-    const scale = Math.max(2, Math.min(6, Math.floor(72 / Math.max(sp.w, sp.h))));
+    const scale = Math.max(1, Math.min(6, Math.floor(100 / Math.max(sp.w, sp.h))));
     cv.style.width = sp.w * scale + "px"; cv.style.height = sp.h * scale + "px";
     const pair = (slot.pair || key === "eyes") && !part.center;
     card.innerHTML = `<div class="pc"></div><b>${slot.label}</b><small>${wOf(part)}×${hOf(part)}${pair ? " ×2" : ""}</small>`;
